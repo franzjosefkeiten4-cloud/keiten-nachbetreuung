@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Keiten – Nachbetreuung</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCOqO0MGc0xyTo31NsayCL8TYHmxMnNbcU",
+  authDomain: "keiten-nachbetreuung.firebaseapp.com",
+  projectId: "keiten-nachbetreuung",
+  storageBucket: "keiten-nachbetreuung.firebasestorage.app",
+  messagingSenderId: "163264629323",
+  appId: "1:163264629323:web:bd60bf974b8e0d09b8dbce",
+  measurementId: "G-824RPHJ594"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const KUNDEN_COL = collection(db, 'kunden');
+
+// Globale Firebase-Funktionen die vom restlichen Code genutzt werden
+window._db = db;
+window._kundenCol = KUNDEN_COL;
+window._setDoc = setDoc;
+window._doc = doc;
+window._deleteDoc = deleteDoc;
+window._getDocs = getDocs;
+window._onSnapshot = onSnapshot;
+window._firebaseReady = true;
+
+// Echtzeit-Listener starten sobald DOM bereit
+document.addEventListener('DOMContentLoaded', () => {
+  if(window.startFirebaseListener) window.startFirebaseListener();
+});
+</script>
+<style>
+  :root {
+    --bg: #232817; --bg2: #1c2012;
+    --text: #F5F1E6; --text-muted: #b8b09e;
+    --accent: #7B8332; --accent-light: #9da343;
+    --holz: #8B5F32; --holz-light: #a87244;
+    --border: rgba(245,241,230,0.12); --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: var(--bg); min-height: 100%; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; font-size: 15px; line-height: 1.6; min-height: 100vh; -webkit-text-size-adjust: 100%; }
+
+  header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 0 20px; display: flex; align-items: center; justify-content: space-between; height: 60px; position: sticky; top: 0; z-index: 100; }
+  .logo-area { display: flex; align-items: center; gap: 12px; }
+  .logo-mark { width: 36px; height: 36px; background: var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .logo-mark svg { width: 20px; height: 20px; fill: #F5F1E6; }
+  .logo-text { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 600; color: #F5F1E6; line-height: 1.2; }
+  .logo-sub { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .info-chip { display: inline-flex; align-items: center; background: rgba(245,241,230,0.07); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; font-size: 12px; color: var(--text-muted); }
+
+  nav { display: flex; gap: 2px; background: var(--bg2); border-bottom: 1px solid var(--border); padding: 0 20px; overflow-x: auto; }
+  .nav-btn { padding: 11px 15px; background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-muted); font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+  .nav-btn:hover { color: #F5F1E6; }
+  .nav-btn.active { color: var(--accent-light); border-bottom-color: var(--accent); }
+
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 60px; background: var(--bg); min-height: calc(100vh - 104px); }
+  .view { display: none; } .view.active { display: block; }
+
+  .page-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+  .page-title { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 600; color: #F5F1E6; }
+  .page-subtitle { font-size: 13px; color: #c0b8a6; margin-top: 2px; }
+
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; border-radius: var(--radius); font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; border: none; text-decoration: none; }
+  .btn-primary { background: var(--accent); color: #F5F1E6; } .btn-primary:hover { background: var(--accent-light); }
+  .btn-ghost { background: rgba(245,241,230,0.08); color: #c0b8a6; border: 1px solid var(--border); } .btn-ghost:hover { background: rgba(245,241,230,0.14); color: #F5F1E6; }
+  .btn-wa { background: #25D366; color: #fff; } .btn-wa:hover { background: #1ebe5a; }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+  .btn-xs { padding: 4px 9px; font-size: 11px; }
+
+  .ampel { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 20px; }
+  .ampel-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .ampel-gruen { background: rgba(90,122,42,0.28); color: #9ed04e; } .ampel-gruen .ampel-dot { background: #9ed04e; box-shadow: 0 0 6px #9ed04e80; }
+  .ampel-gelb { background: rgba(184,134,11,0.22); color: #e0ad1a; } .ampel-gelb .ampel-dot { background: #e0ad1a; box-shadow: 0 0 6px #e0ad1a80; }
+  .ampel-rot { background: rgba(180,60,40,0.28); color: #f08070; } .ampel-rot .ampel-dot { background: #f08070; box-shadow: 0 0 6px #f0807080; }
+
+  .erstanruf-warn { display: flex; align-items: center; gap: 8px; background: rgba(180,60,40,0.18); border: 1px solid rgba(180,60,40,0.45); border-radius: 7px; padding: 8px 12px; margin-top: 8px; font-size: 12px; color: #f08070; }
+  .lieferdatum-hinweis { display: flex; align-items: center; gap: 8px; background: rgba(123,131,50,0.12); border: 1px solid rgba(123,131,50,0.3); border-radius: 7px; padding: 8px 12px; margin-top: 8px; font-size: 12px; color: #b8c870; }
+
+  .kunden-grid { display: flex; flex-direction: column; gap: 10px; }
+  .kunde-card { background: rgba(245,241,230,0.06); border: 1px solid rgba(245,241,230,0.13); border-radius: var(--radius); padding: 15px 18px; display: grid; grid-template-columns: 1fr auto; gap: 12px; cursor: pointer; transition: all 0.2s; }
+  .kunde-card:hover { background: rgba(245,241,230,0.11); border-color: rgba(245,241,230,0.22); }
+  .kunde-card.ueberfaellig { border-color: rgba(180,60,40,0.5); background: rgba(180,60,40,0.07); }
+  .kunde-name { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 600; color: #F5F1E6; margin-bottom: 2px; }
+  .kunde-meta { font-size: 12px; color: #c0b8a6; display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 7px; }
+  .naechste-aktion { font-size: 12px; color: #ddd8cc; background: rgba(123,131,50,0.16); border-left: 2px solid var(--accent); padding: 5px 10px; border-radius: 0 6px 6px 0; margin-top: 4px; }
+  .produkt-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+  .chip { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 4px; background: rgba(245,241,230,0.08); border: 1px solid rgba(245,241,230,0.14); color: #c8c0ae; }
+  .chip.keiten { background: rgba(123,131,50,0.16); border-color: rgba(123,131,50,0.3); color: #b0be50; }
+  .chip.fremd { background: rgba(139,95,50,0.14); border-color: rgba(139,95,50,0.3); color: #c8a060; }
+  .chip.eigen { background: rgba(100,80,160,0.18); border-color: rgba(100,80,160,0.35); color: #b0a0e0; }
+  .kunde-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .pfad-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .pfad-a { background: rgba(90,122,42,0.25); color: #9ed04e; }
+  .pfad-b { background: rgba(139,95,50,0.25); color: var(--holz-light); }
+
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(15,18,8,0.88); z-index: 200; overflow-y: auto; padding: 16px; }
+  .overlay.open { display: flex; align-items: flex-start; justify-content: center; }
+  .modal { background: #283016; border: 1px solid rgba(245,241,230,0.12); border-radius: 14px; width: 100%; max-width: 700px; margin: auto; overflow: hidden; }
+  .modal-header { background: #1e2610; padding: 18px 22px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+  .modal-title { font-family: 'Playfair Display', serif; font-size: 19px; font-weight: 600; color: #F5F1E6; }
+  .modal-close { width: 30px; height: 30px; background: rgba(245,241,230,0.08); border: none; border-radius: 6px; color: var(--text-muted); font-size: 17px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .modal-close:hover { background: rgba(245,241,230,0.16); color: #F5F1E6; }
+  .modal-body { padding: 22px; }
+  .modal-footer { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+
+  .prozess-timeline { display: flex; gap: 0; margin-bottom: 22px; overflow-x: auto; padding-bottom: 4px; }
+  .timeline-step { display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 68px; position: relative; }
+  .timeline-step:not(:last-child)::after { content: ''; position: absolute; top: 13px; left: 50%; width: 100%; height: 2px; background: var(--border); z-index: 0; }
+  .timeline-step.done:not(:last-child)::after { background: var(--accent); }
+  .step-circle { width: 26px; height: 26px; border-radius: 50%; border: 2px solid rgba(245,241,230,0.15); background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: var(--text-muted); z-index: 1; position: relative; transition: all 0.3s; }
+  .timeline-step.done .step-circle { background: var(--accent); border-color: var(--accent); color: #F5F1E6; }
+  .timeline-step.active .step-circle { background: var(--holz); border-color: var(--holz); color: #F5F1E6; box-shadow: 0 0 0 4px rgba(139,95,50,0.25); }
+  .step-label { font-size: 9px; color: var(--text-muted); text-align: center; margin-top: 5px; line-height: 1.3; }
+  .timeline-step.active .step-label { color: #F5F1E6; font-weight: 500; }
+
+  .paar-produkt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+  .person-block { background: rgba(245,241,230,0.04); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+  .person-block-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--accent-light); font-weight: 600; margin-bottom: 10px; }
+  .produkt-item-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 2px; }
+  .produkt-item-wert { font-size: 13px; color: #F5F1E6; font-weight: 500; margin-bottom: 6px; }
+
+  .leitfaden-box { background: rgba(123,131,50,0.10); border: 1px solid rgba(123,131,50,0.28); border-radius: var(--radius); padding: 16px; margin-bottom: 18px; }
+  .leitfaden-title { font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 600; color: var(--accent-light); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .leitfaden-intro { font-size: 13px; color: #b8b09e; margin-bottom: 12px; font-style: italic; border-left: 2px solid var(--accent); padding-left: 11px; }
+  .leitfaden-fragen { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+  .leitfaden-fragen li { background: rgba(245,241,230,0.05); padding: 9px 13px 9px 26px; border-radius: 6px; font-size: 13px; color: #ddd8cc; line-height: 1.5; position: relative; }
+  .leitfaden-fragen li::before { content: '›'; position: absolute; left: 11px; color: var(--accent); font-size: 16px; }
+
+  .kontaktverlauf { margin-bottom: 18px; }
+  .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 9px; font-weight: 500; }
+  .kontakt-eintrag { background: rgba(245,241,230,0.04); border: 1px solid var(--border); border-radius: 8px; padding: 11px 13px; margin-bottom: 7px; }
+  .kontakt-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .kontakt-typ { font-size: 12px; font-weight: 600; color: var(--accent-light); }
+  .kontakt-datum { font-size: 11px; color: var(--text-muted); }
+  .kontakt-notiz { font-size: 13px; color: #ddd8cc; line-height: 1.5; }
+
+  .wa-box { background: rgba(37,211,102,0.07); border: 1px solid rgba(37,211,102,0.22); border-radius: var(--radius); padding: 16px; margin-bottom: 18px; }
+  .wa-title { font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 600; color: #5de087; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .wa-preview { background: rgba(0,0,0,0.3); border-radius: 8px; padding: 12px; font-size: 13px; color: #ddd8cc; line-height: 1.6; white-space: pre-wrap; margin-bottom: 12px; font-style: italic; }
+
+  .form-row { margin-bottom: 14px; }
+  .form-label { display: block; font-size: 11px; font-weight: 500; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .form-select, .form-textarea, .form-input { width: 100%; background: rgba(245,241,230,0.07); border: 1px solid rgba(245,241,230,0.16); border-radius: 7px; color: #F5F1E6; font-family: 'Inter', sans-serif; font-size: 14px; padding: 9px 12px; outline: none; transition: border-color 0.2s; appearance: none; }
+  .form-select:focus, .form-textarea:focus, .form-input:focus { border-color: var(--accent); }
+  .form-textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
+  .form-select option { background: #232817; color: #F5F1E6; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* Erweiterbare Dropdowns */
+  .erweiterbar-wrap { position: relative; }
+  .erweiterbar-toggle {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    background: rgba(123,131,50,0.2); border: 1px solid rgba(123,131,50,0.35);
+    border-radius: 5px; color: var(--accent-light); font-size: 16px; font-weight: 700;
+    width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.2s; line-height: 1; padding: 0;
+    font-family: 'Inter', sans-serif;
+  }
+  .erweiterbar-toggle:hover { background: rgba(123,131,50,0.35); }
+  .erweiterbar-wrap .form-select { padding-right: 40px; }
+
+  .add-eintrag-panel {
+    display: none; margin-top: 6px;
+    background: rgba(100,80,160,0.10);
+    border: 1px solid rgba(100,80,160,0.25);
+    border-radius: 8px; padding: 10px 12px;
+  }
+  .add-eintrag-panel.open { display: block; }
+  .add-eintrag-row { display: flex; gap: 7px; align-items: center; margin-bottom: 8px; }
+  .add-eintrag-input { flex: 1; background: rgba(245,241,230,0.08); border: 1px solid rgba(245,241,230,0.18); border-radius: 6px; color: #F5F1E6; font-family: 'Inter', sans-serif; font-size: 13px; padding: 7px 10px; outline: none; }
+  .add-eintrag-input:focus { border-color: rgba(100,80,160,0.6); }
+  .add-eintrag-input::placeholder { color: var(--text-muted); }
+  .btn-add-confirm { background: rgba(100,80,160,0.3); border: 1px solid rgba(100,80,160,0.5); border-radius: 6px; color: #c0b0f0; font-size: 12px; font-weight: 600; padding: 7px 12px; cursor: pointer; white-space: nowrap; font-family: 'Inter', sans-serif; transition: all 0.2s; }
+  .btn-add-confirm:hover { background: rgba(100,80,160,0.45); }
+  .eigene-liste { display: flex; flex-direction: column; gap: 4px; }
+  .eigene-eintrag-row { display: flex; align-items: center; justify-content: space-between; background: rgba(245,241,230,0.04); border-radius: 5px; padding: 5px 8px; font-size: 12px; color: #d0c8e0; }
+  .eigene-eintrag-del { background: none; border: none; color: rgba(240,128,112,0.6); cursor: pointer; font-size: 14px; padding: 0 4px; transition: color 0.2s; }
+  .eigene-eintrag-del:hover { color: #f08070; }
+  .eigene-leer { font-size: 11px; color: var(--text-muted); font-style: italic; }
+
+  .person-tabs { display: flex; gap: 0; margin-bottom: 14px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+  .person-tab { flex: 1; padding: 9px; text-align: center; font-size: 13px; font-weight: 500; cursor: pointer; background: rgba(245,241,230,0.04); color: var(--text-muted); border: none; font-family: 'Inter', sans-serif; transition: all 0.2s; }
+  .person-tab.active { background: rgba(123,131,50,0.2); color: var(--accent-light); }
+  .person-panel { display: none; } .person-panel.active { display: block; }
+
+  .produkt-sektion { background: rgba(245,241,230,0.04); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 14px; }
+  .produkt-sektion-title { font-size: 11px; font-weight: 600; color: var(--accent-light); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 11px; }
+  .produkt-zeile { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: start; margin-bottom: 12px; }
+  .quelle-toggle { display: flex; gap: 5px; padding-top: 22px; }
+  .quelle-btn { padding: 7px 10px; border-radius: 6px; font-size: 11px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: rgba(245,241,230,0.05); color: var(--text-muted); transition: all 0.2s; white-space: nowrap; }
+  .quelle-btn.active-keiten { background: rgba(123,131,50,0.22); border-color: rgba(123,131,50,0.4); color: #b0be50; }
+  .quelle-btn.active-fremd { background: rgba(139,95,50,0.18); border-color: rgba(139,95,50,0.4); color: #c8a060; }
+
+  .radio-group { display: flex; gap: 8px; flex-wrap: wrap; }
+  .radio-opt { flex: 1; min-width: 110px; }
+  .radio-opt input { display: none; }
+  .radio-opt label { display: block; text-align: center; padding: 9px 12px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; cursor: pointer; color: var(--text-muted); transition: all 0.2s; }
+  .radio-opt input:checked + label { border-color: var(--accent); background: rgba(123,131,50,0.2); color: #F5F1E6; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 24px; }
+  .stat-card { background: rgba(245,241,230,0.06); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 14px; text-align: center; }
+  .stat-zahl { font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 700; color: #F5F1E6; line-height: 1; margin-bottom: 4px; }
+  .stat-label { font-size: 12px; color: #b8b09e; }
+
+  .divider { height: 1px; background: var(--border); margin: 16px 0; }
+  .hint { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
+  .empty-state { text-align: center; padding: 50px 20px; color: var(--text-muted); }
+  .empty-state-icon { font-size: 44px; margin-bottom: 14px; opacity: 0.4; }
+  .empty-state-title { font-family: 'Playfair Display', serif; font-size: 19px; color: #F5F1E6; margin-bottom: 8px; }
+  .neukunde-box { background: rgba(245,241,230,0.05); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; }
+
+  /* ERINNERUNGS-BANNER */
+  .erinnerung-banner {
+    background: rgba(139,95,50,0.18);
+    border: 1px solid rgba(139,95,50,0.4);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .erinnerung-banner:hover { background: rgba(139,95,50,0.26); }
+  .erinnerung-banner-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 15px; font-weight: 600;
+    color: var(--holz-light);
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .erinnerung-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--holz); color: #F5F1E6;
+    border-radius: 20px; font-size: 12px; font-weight: 700;
+    padding: 2px 10px; min-width: 28px;
+  }
+  .erinnerung-zeilen { display: flex; flex-direction: column; gap: 5px; }
+  .erinnerung-zeile {
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(245,241,230,0.05); border-radius: 6px;
+    padding: 7px 11px; font-size: 13px; color: #ddd8cc;
+  }
+  .erinnerung-zeile-name { font-weight: 500; color: #F5F1E6; }
+  .erinnerung-zeile-info { font-size: 12px; color: var(--text-muted); text-align: right; }
+  .erinnerung-zeile.heute { border-left: 2px solid #f08070; }
+  .erinnerung-zeile.morgen { border-left: 2px solid #e0ad1a; }
+  .erinnerung-zeile.bald { border-left: 2px solid var(--accent); }
+  .erinnerung-zeile.ueberfaellig { border-left: 2px solid #f08070; background: rgba(180,60,40,0.1); }
+
+  /* HEUTE-TAB */
+  .heute-section { margin-bottom: 24px; }
+  .heute-section-title {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-muted); font-weight: 600; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .heute-leer {
+    text-align: center; padding: 40px 20px;
+    color: var(--text-muted); font-size: 14px;
+  }
+  .heute-leer-icon { font-size: 36px; margin-bottom: 10px; opacity: 0.4; }
+
+  @media (max-width: 560px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .paar-produkt-grid { grid-template-columns: 1fr; }
+    .kunde-card { grid-template-columns: 1fr; }
+    .kunde-right { align-items: flex-start; }
+    .produkt-zeile { grid-template-columns: 1fr; }
+    .quelle-toggle { padding-top: 0; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .modal-body { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-area">
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24"><path d="M3 20h18v-2H3v2zm1-5h16v-2H4v2zM3 7v6l3-2 3 2 3-2 3 2 3-2V7l-3 2-3-2-3 2-3-2-3 2z"/></svg>
+    </div>
+    <div>
+      <div class="logo-text">Keiten</div>
+      <div class="logo-sub">Nachbetreuung</div>
+    </div>
+  </div>
+  <span id="headerDatum" class="info-chip"></span>
+</header>
+
+<nav>
+  <button class="nav-btn active" onclick="showView('kundenliste')">Kundenliste</button>
+  <button class="nav-btn" onclick="showView('heute')">Heute <span id="heuteBadgeNav" style="display:none;background:var(--holz);color:#F5F1E6;border-radius:20px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:4px;"></span></button>
+  <button class="nav-btn" onclick="showView('neukunde')">+ Neuer Kunde</button>
+  <button class="nav-btn" onclick="showView('uebersicht')">Übersicht</button>
+  <button class="nav-btn" onclick="showView('eintraege')">Einträge verwalten</button>
+</nav>
+
+<main>
+  <!-- KUNDENLISTE -->
+  <div class="view active" id="view-kundenliste">
+    <div id="erinnerungBanner"></div>
+    <div class="page-header">
+      <div>
+        <div class="page-title">Aktive Nachbetreuung</div>
+        <div class="page-subtitle">Alle Kunden in laufender Betreuung</div>
+      </div>
+    </div>
+    <div class="kunden-grid" id="kundenGrid"></div>
+  </div>
+
+  <!-- HEUTE -->
+  <div class="view" id="view-heute">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Heute & diese Woche</div>
+        <div class="page-subtitle">Alle fälligen Kontakte der nächsten 7 Tage</div>
+      </div>
+    </div>
+    <div id="heuteInhalt"></div>
+  </div>
+
+  <!-- NEUER KUNDE -->
+  <div class="view" id="view-neukunde">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Neuen Kunden anlegen</div>
+        <div class="page-subtitle">Einzel- oder Paarhaushalt – beide Schlafsysteme in einem Datensatz.</div>
+      </div>
+    </div>
+    <div class="neukunde-box">
+      <div class="form-grid">
+        <div class="form-row">
+          <label class="form-label">Name Person 1</label>
+          <input class="form-input" id="nk-name1" placeholder="z. B. Thomas Meier" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">Name Person 2 (optional)</label>
+          <input class="form-input" id="nk-name2" placeholder="z. B. Sandra Meier" oninput="togglePerson2(this.value)" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">Telefon / WhatsApp Person 1</label>
+          <input class="form-input" id="nk-tel1" placeholder="+49 171 ..." />
+        </div>
+        <div class="form-row">
+          <label class="form-label">Telefon / WhatsApp Person 2</label>
+          <input class="form-input" id="nk-tel2" placeholder="+49 172 ... (optional)" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">Berater</label>
+          <select class="form-select" id="nk-berater">
+            <option value="Franz-Josef">Franz-Josef</option>
+            <option value="Viktor">Viktor</option>
+            <option value="Elias">Elias</option>
+            <option value="Samuel">Samuel</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Kaufdatum</label>
+          <input class="form-input" type="date" id="nk-kaufdatum" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">Lieferdatum</label>
+          <input class="form-input" type="date" id="nk-lieferdatum" />
+        </div>
+      </div>
+
+      <div class="person-tabs" style="margin-top:8px;" id="personTabs">
+        <button class="person-tab active" onclick="switchTab(0)">🛏 Person 1</button>
+        <button class="person-tab" onclick="switchTab(1)" id="tab-p2" style="opacity:0.4;pointer-events:none;">🛏 Person 2</button>
+      </div>
+
+      <div class="person-panel active" id="panel-p1">
+        <div class="produkt-sektion">
+          <div class="produkt-sektion-title">Schlafsystem Person 1</div>
+          <div id="felder-p1"></div>
+        </div>
+      </div>
+
+      <div class="person-panel" id="panel-p2">
+        <div class="produkt-sektion">
+          <div class="produkt-sektion-title">Schlafsystem Person 2</div>
+          <div id="felder-p2"></div>
+        </div>
+      </div>
+
+      <div class="form-row" style="margin-top:4px;">
+        <label class="form-label">Erste Notiz (optional)</label>
+        <textarea class="form-textarea" id="nk-notiz" placeholder="Besondere Wünsche, körperliche Hinweise, Erwartungen ..."></textarea>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
+        <button class="btn btn-primary" onclick="kundeAnlegen()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+          Kunde anlegen
+        </button>
+        <button class="btn btn-ghost" onclick="showView('kundenliste')">Abbrechen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ÜBERSICHT -->
+  <div class="view" id="view-uebersicht">
+    <div class="page-header">
+      <div><div class="page-title">Übersicht</div><div class="page-subtitle">Statusübersicht aller Kunden</div></div>
+    </div>
+    <div class="stats-grid" id="statsGrid"></div>
+    <div class="section-label">Alle Kunden nach Status</div>
+    <div class="kunden-grid" id="uebersichtGrid"></div>
+  </div>
+
+  <!-- EINTRÄGE VERWALTEN -->
+  <div class="view" id="view-eintraege">
+    <div class="page-header">
+      <div><div class="page-title">Eigene Einträge verwalten</div><div class="page-subtitle">Hier verwaltete Einträge erscheinen in allen Dropdown-Listen.</div></div>
+    </div>
+    <div id="eintraegeVerwaltung"></div>
+    <div style="margin-top:32px;padding-top:20px;border-top:1px solid var(--border);">
+      <div style="font-size:13px;font-weight:600;color:#F5F1E6;margin-bottom:6px;">⚠️ Demo-Daten zurücksetzen</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">Setzt alle Kundendaten auf die eingebauten Beispieldaten zurück. Eigene Einträge in den Dropdowns bleiben erhalten.</div>
+      <button class="btn btn-ghost" style="border-color:rgba(180,60,40,0.4);color:#f08070;" onclick="bestaetigeReset()">Kundendaten zurücksetzen</button>
+    </div>
+  </div>
+</main>
+
+<!-- MODAL: PROFIL -->
+<div class="overlay" id="profilOverlay" onclick="overlayClick(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="profilName">–</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" id="profilMeta">–</div>
+      </div>
+      <button class="modal-close" onclick="closeOverlay('profilOverlay')">✕</button>
+    </div>
+    <div class="modal-body" id="profilBody"></div>
+    <div class="modal-footer" id="profilFooter"></div>
+  </div>
+</div>
+
+<!-- MODAL: GESPRÄCH -->
+<div class="overlay" id="gespraechOverlay" onclick="overlayClick(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Gespräch erfassen</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" id="gespraechSubtitle">–</div>
+      </div>
+      <button class="modal-close" onclick="closeOverlay('gespraechOverlay')">✕</button>
+    </div>
+    <div class="modal-body" id="gespraechBody"></div>
+    <div class="modal-footer" id="gespraechFooter"></div>
+  </div>
+</div>
+
+<!-- MODAL: WHATSAPP -->
+<div class="overlay" id="waOverlay" onclick="overlayClick(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">WhatsApp Empfehlungsanfrage</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" id="waSubtitle">–</div>
+      </div>
+      <button class="modal-close" onclick="closeOverlay('waOverlay')">✕</button>
+    </div>
+    <div class="modal-body" id="waBody"></div>
+    <div class="modal-footer" id="waFooter"></div>
+  </div>
+</div>
+
+<script type="module">
+// ============================================================
+// STAMM-LISTEN
+// ============================================================
+
+const STAMM = {
+  matratze: {
+    label: 'Matratze', icon: '🛏',
+    gruppen: [
+      { label: 'Keiten Nachbetreuung', items: ['Comfort Sensitive', 'Premium Sensitive', 'Line'] },
+      { label: 'Fremdprodukt', items: ['Fremdprodukt Matratze'] },
+    ]
+  },
+  lattenrost: {
+    label: 'Lattenrost', icon: '📐',
+    gruppen: [
+      { label: 'Stabilo', items: ['Stabilo Starr','Stabilo Kopf-/Fußverstellung','Stabilo Elektrisch','Stabilo Starr Schräg/Reflux'] },
+      { label: 'Vitarioflex', items: ['Vitarioflex Starr','Vitarioflex Kopf-/Fußverstellung','Vitarioflex Elektrisch'] },
+      { label: 'Fremdprodukt', items: ['Fremdprodukt Lattenrost'] },
+    ]
+  },
+  kissen: {
+    label: 'Kopfkissen', icon: '💤',
+    gruppen: [
+      { label: 'Keiten', items: ['Nackenstützkissen High Sensitive','Dinkel-Kissen','Zirben-Kissen'] },
+      { label: 'Fremdprodukt', items: ['Fremdprodukt Kissen'] },
+    ]
+  },
+  bett: {
+    label: 'Bett / Gestell', icon: '🪵',
+    gruppen: [
+      { label: 'Fremdprodukt', items: ['Fremdprodukt Bettgestell'] },
+    ]
+  },
+};
+
+const FELDER_REIHENFOLGE = ['matratze','lattenrost','kissen','bett'];
+
+// ============================================================
+// EIGENE EINTRÄGE (localStorage)
+// ============================================================
+
+function ladeEigene() {
+  try { return JSON.parse(localStorage.getItem('keiten_eigene_v1')) || {matratze:[],lattenrost:[],kissen:[],bett:[]}; }
+  catch(e) { return {matratze:[],lattenrost:[],kissen:[],bett:[]}; }
+}
+function speichereEigene(e) { localStorage.setItem('keiten_eigene_v1', JSON.stringify(e)); }
+let EIGENE = ladeEigene();
+
+function eigeneHinzufuegen(feld, wert) {
+  wert = wert.trim();
+  if(!wert || EIGENE[feld].includes(wert)) return false;
+  EIGENE[feld].push(wert);
+  speichereEigene(EIGENE);
+  return true;
+}
+function eigeneEntfernen(feld, wert) {
+  EIGENE[feld] = EIGENE[feld].filter(e => e !== wert);
+  speichereEigene(EIGENE);
+}
+
+// ============================================================
+// DROPDOWN-HTML ERZEUGEN
+// ============================================================
+
+function selectHtml(id, feld) {
+  const s = STAMM[feld];
+  let opts = `<option value="">– keine / unbekannt –</option>`;
+  s.gruppen.forEach(g => {
+    opts += `<optgroup label="${g.label}">`;
+    g.items.forEach(i => opts += `<option value="${i}">${i}</option>`);
+    opts += `</optgroup>`;
+  });
+  if(EIGENE[feld].length) {
+    opts += `<optgroup label="Eigene Einträge">`;
+    EIGENE[feld].forEach(i => opts += `<option value="${i}">${i}</option>`);
+    opts += `</optgroup>`;
+  }
+  return `<div class="erweiterbar-wrap">
+    <select class="form-select" id="${id}" style="padding-right:40px">${opts}</select>
+    <button type="button" class="erweiterbar-toggle" onclick="toggleAddPanel('panel-add-${id}')" title="Eigenen Eintrag hinzufügen">+</button>
+  </div>
+  <div class="add-eintrag-panel" id="panel-add-${id}">
+    <div class="add-eintrag-row">
+      <input class="add-eintrag-input" id="inp-add-${id}" placeholder="Neuer Eintrag ..." onkeydown="if(event.key==='Enter')addEintragFromField('${id}','${feld}')" />
+      <button class="btn-add-confirm" onclick="addEintragFromField('${id}','${feld}')">Hinzufügen</button>
+    </div>
+  </div>`;
+}
+
+function toggleAddPanel(panelId) {
+  const p = document.getElementById(panelId);
+  if(!p) return;
+  p.classList.toggle('open');
+  if(p.classList.contains('open')) {
+    const inp = p.querySelector('.add-eintrag-input');
+    if(inp) setTimeout(()=>inp.focus(), 80);
+  }
+}
+
+function addEintragFromField(selectId, feld) {
+  const inp = document.getElementById(`inp-add-${selectId}`);
+  if(!inp) return;
+  const wert = inp.value.trim();
+  if(!wert) return;
+  if(!eigeneHinzufuegen(feld, wert)) { inp.value=''; return; }
+  // Select neu bauen
+  const wrap = document.getElementById(selectId)?.closest('.erweiterbar-wrap');
+  if(wrap) {
+    const panel = document.getElementById(`panel-add-${selectId}`);
+    const wasOpen = panel?.classList.contains('open');
+    const parent = wrap.parentElement;
+    const newHtml = selectHtml(selectId, feld);
+    // ersetze nur die erweiterbar-wrap + panel
+    const tmp = document.createElement('div');
+    tmp.innerHTML = newHtml;
+    wrap.replaceWith(tmp.firstElementChild);
+    // panel wieder einfügen
+    const newPanel = parent.querySelector(`#panel-add-${selectId}`);
+    // neues select auf neuen wert setzen
+    const sel = document.getElementById(selectId);
+    if(sel) sel.value = wert;
+    if(wasOpen && newPanel) newPanel.classList.add('open');
+  }
+  inp.value='';
+  if(document.getElementById('view-eintraege').classList.contains('active')) renderEintraege();
+}
+
+// ============================================================
+// PRODUKTFELDER RENDERN (für Formular)
+// ============================================================
+
+const quellenState = {
+  p1: {matratze:'keiten',lattenrost:'keiten',kissen:'keiten',bett:'keiten'},
+  p2: {matratze:'keiten',lattenrost:'keiten',kissen:'keiten',bett:'keiten'},
+};
+
+function setQuelle(person, feld, wert, btn) {
+  quellenState[person][feld] = wert;
+  btn.closest('.quelle-toggle').querySelectorAll('.quelle-btn').forEach(b=>b.className='quelle-btn');
+  btn.className = `quelle-btn active-${wert}`;
+}
+
+function renderProduktFelder(containerId, prefix) {
+  const container = document.getElementById(containerId);
+  if(!container) return;
+  const produktHtml = FELDER_REIHENFOLGE.map(feld => {
+    const s = STAMM[feld];
+    const selId = `${prefix}-${feld}`;
+    return `<div class="produkt-zeile">
+      <div style="flex:1">
+        <label class="form-label">${s.icon} ${s.label}</label>
+        ${selectHtml(selId, feld)}
+      </div>
+      <div class="quelle-toggle">
+        <button class="quelle-btn active-keiten" onclick="setQuelle('${prefix}','${feld}','keiten',this)">Keiten</button>
+        <button class="quelle-btn" onclick="setQuelle('${prefix}','${feld}','fremd',this)">Fremd</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  const liegeHtml = `
+    <div style="margin-top:4px;">
+      <div class="form-label" style="margin-bottom:8px;">📐 Liegefläche</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div>
+          <label class="form-label">Breite</label>
+          <select class="form-select" id="${prefix}-breite">
+            <option value="">– unbekannt –</option>
+            <option value="80">80 cm</option>
+            <option value="90" selected>90 cm</option>
+            <option value="100">100 cm</option>
+            <option value="120">120 cm</option>
+            <option value="140">140 cm</option>
+            <option value="160">160 cm</option>
+            <option value="180">180 cm</option>
+            <option value="200">200 cm</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Länge</label>
+          <select class="form-select" id="${prefix}-laenge">
+            <option value="">– unbekannt –</option>
+            <option value="200" selected>200 cm</option>
+            <option value="210">210 cm</option>
+            <option value="220">220 cm</option>
+          </select>
+        </div>
+      </div>
+      <label class="partner-check-label" style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:9px 12px;background:rgba(245,241,230,0.05);border:1px solid var(--border);border-radius:7px;">
+        <input type="checkbox" id="${prefix}-partnermatratze" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;" />
+        <span style="font-size:13px;color:#ddd8cc;">Partnermatratze <span style="color:var(--text-muted);font-size:11px;">(zwei Matratzen bilden gemeinsame Fläche)</span></span>
+      </label>
+    </div>`;
+
+  container.innerHTML = produktHtml + liegeHtml;
+}
+
+// ============================================================
+// EINTRÄGE VERWALTEN VIEW
+// ============================================================
+
+function renderEintraege() {
+  const box = document.getElementById('eintraegeVerwaltung');
+  box.innerHTML = FELDER_REIHENFOLGE.map(feld => {
+    const s = STAMM[feld];
+    const eintraege = EIGENE[feld];
+    return `<div class="produkt-sektion" style="margin-bottom:16px;">
+      <div class="produkt-sektion-title">${s.icon} ${s.label}</div>
+      <div class="eigene-liste" id="eigene-liste-${feld}">
+        ${eintraege.length
+          ? eintraege.map(e=>`<div class="eigene-eintrag-row">
+              <span>${e}</span>
+              <button class="eigene-eintrag-del" onclick="loescheEintrag('${feld}','${e.replace(/'/g,"\\'")}')">✕</button>
+            </div>`).join('')
+          : `<div class="eigene-leer">Noch keine eigenen Einträge.</div>`
+        }
+      </div>
+      <div style="display:flex;gap:7px;margin-top:10px;align-items:center;">
+        <input class="add-eintrag-input" id="vw-inp-${feld}" placeholder="Neuen Eintrag hinzufügen ..." style="flex:1"
+          onkeydown="if(event.key==='Enter')verwaltungHinzufuegen('${feld}')" />
+        <button class="btn-add-confirm" onclick="verwaltungHinzufuegen('${feld}')">+ Hinzufügen</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function verwaltungHinzufuegen(feld) {
+  const inp = document.getElementById(`vw-inp-${feld}`);
+  if(!inp) return;
+  eigeneHinzufuegen(feld, inp.value);
+  inp.value = '';
+  renderEintraege();
+}
+
+function loescheEintrag(feld, wert) {
+  eigeneEntfernen(feld, wert);
+  renderEintraege();
+}
+
+// ============================================================
+// PAAR-TABS
+// ============================================================
+
+function togglePerson2(val) {
+  const tab2 = document.getElementById('tab-p2');
+  if(val.trim()) {
+    tab2.style.opacity='1'; tab2.style.pointerEvents='auto';
+    tab2.textContent=`🛏 ${val.split(' ')[0]}`;
+  } else {
+    tab2.style.opacity='0.4'; tab2.style.pointerEvents='none';
+    tab2.textContent='🛏 Person 2'; switchTab(0);
+  }
+}
+
+function switchTab(idx) {
+  document.querySelectorAll('.person-tab').forEach((t,i)=>t.classList.toggle('active',i===idx));
+  document.querySelectorAll('.person-panel').forEach((p,i)=>p.classList.toggle('active',i===idx));
+}
+
+// ============================================================
+// PROZESS & LEITFÄDEN
+// ============================================================
+
+const PROZESS_SCHRITTE = [
+  {id:'erstanruf',label:'Erstanruf',tage:42},
+  {id:'nb1',label:'Nachbetreuung 1',tage:56},
+  {id:'nb2',label:'Nachbetreuung 2',tage:70},
+  {id:'nb3',label:'Nachbetreuung 3',tage:84},
+  {id:'nb4',label:'Nachbetreuung 4',tage:100},
+  {id:'nb5',label:'Nachbetreuung 5',tage:120},
+  {id:'empfehlung',label:'Empfehlung',tage:135},
+  {id:'abgeschlossen',label:'Abgeschlossen',tage:null},
+];
+
+const LEITFAEDEN = {
+  erstanruf:{titel:'Erstanruf – 6 Wochen nach Lieferung',intro:'Locker anfangen, keine Checklisten-Atmosphäre. Der Kunde soll merken: Hier ruft jemand an, weil er es ernst meint.',fragen:['Guten Tag, hier ist [Name] von Keiten Schlafberatung – wie haben Sie die erste Zeit mit dem neuen Schlafsystem erlebt?','Haben Sie sich schon ein bisschen eingelebt, oder braucht es noch ein paar Tage zum Gewöhnen?','Gibt es etwas, das Ihnen aufgefallen ist – sei es positiv oder was Sie beschäftigt?','Wie fühlt sich die Unterlage morgens an – eher gut, oder gibt es Stellen, die noch nicht ganz stimmen?','Haben Sie schon das Gefühl, besser zu schlafen, oder ist das noch zu früh zum Einschätzen?']},
+  erstanruf_nachbedarf:{titel:'Erstanruf – Nachbedarf erkannt',intro:'Ruhe bewahren, nicht sofort in Lösungen springen. Erst wirklich zuhören, dann einordnen.',fragen:['Das höre ich gerne, dass Sie das offen sagen – erzählen Sie mir mehr, was Sie beschäftigt.','Liegt das Gefühl eher am Schultergürtel, an der Hüfte, oder ist das schwer zu sagen?','Haben Sie die Eingewöhnungszeit schon abgewartet, oder haben Sie das Gefühl, das ist kein normales Eingewöhnen?','Gibt es einen Moment im Schlaf, wo es besser wird – nach dem Umdrehen, in der Seite, auf dem Rücken?','Was wäre für Sie eine spürbare Verbesserung? Was würde sich dann anders anfühlen?']},
+  nb1:{titel:'Nachbetreuung 1 – Erste Rückmeldung nach Eingewöhnung',intro:'Die meisten Kunden brauchen 3–5 Wochen, bis sie wirklich spüren, was das neue System mit ihnen macht.',fragen:['Wie ist die Eingewöhnungsphase für Sie verlaufen – haben Sie sich mittlerweile zurechtgefunden?','Haben Sie schon einen Unterschied gemerkt in der Tiefe des Schlafs oder beim Aufwachen?','Gibt es Bereiche, die noch nicht ganz stimmen – oder fühlt sich alles stimmig an?','Wir haben beim Kauf [Matratze] empfohlen – macht die das, wofür sie gedacht war?','Wenn Sie Ihren Schlaf auf einer Skala von 1 bis 10 einordnen würden – wo stehen Sie jetzt, wo standen Sie vorher?']},
+  nb2:{titel:'Nachbetreuung 2 – Vertiefung und Feinanpassung',intro:'Jetzt haben wir genug Abstand, um klarer zu sehen, was läuft und was nicht.',fragen:['Beim letzten Gespräch haben Sie [Thema] erwähnt – wie hat sich das seitdem entwickelt?','Gibt es Nächte, wo alles gut ist, und solche, wo Sie mit etwas ringen – was ist da der Unterschied?','Haben Sie irgendetwas verändert – Kissenhöhe, Schlafposition, Raumtemperatur?','Was ist das Eine, das Ihnen beim Schlafen noch fehlt, wenn Sie überlegen?','Haben Sie das Gefühl, wir sollten nochmal gemeinsam schauen – oder läuft es so?']},
+  nb3:{titel:'Nachbetreuung 3 – Zwischenbilanz',intro:'Jetzt kennen wir den Kunden schon ein bisschen. Persönlicher Ton ist erlaubt.',fragen:['Wir sprechen jetzt schon eine Weile – ich würde gerne wissen, wie Ihre ehrliche Bilanz ist.','Hat sich Ihr Schlaf im Vergleich zum alten System verbessert, verschlechtert, oder anders?','Gibt es noch einen Punkt, den ich bisher nicht angesprochen habe, der Sie beschäftigt?','Ich frage direkt: Sind Sie froh, dass Sie sich damals für dieses System entschieden haben?','Was könnten wir besser machen – im Beratungsprozess, in der Begleitung danach?']},
+  nb4:{titel:'Nachbetreuung 4 – Vor der Entscheidung',intro:'Wenn hier noch ein Problem besteht, muss jetzt eine klare Lösung angeboten werden.',fragen:['Wir nähern uns dem Ende des regulären Betreuungszeitraums – wie stehen Sie gerade dazu?','Gibt es Punkte, die ich noch nicht gelöst habe, die Sie unzufrieden lassen?','Falls noch etwas nicht stimmt: Was wäre der nächste sinnvolle Schritt für Sie?','Was bräuchten Sie konkret, damit Sie sagen: „Jetzt stimmt es wirklich"?']},
+  nb5:{titel:'Nachbetreuung 5 – Abschluss der Betreuungsphase',intro:'Letzter regulärer Kontakt. Ehrliche Bilanz ziehen, ggf. lösen, dann positiv abschließen.',fragen:['Das ist unser letzter regulärer Kontakt – ich möchte gerne wissen, wie Sie heute stehen.','Was hat das neue Schlafsystem in Ihrem Alltag verändert – wenn überhaupt?','Gibt es noch offene Punkte, die ich vorher klären sollte?','Ich bin auch in Zukunft für Sie da – wenn irgendetwas ist, melden Sie sich einfach.','Und vielleicht darf ich Sie zum Schluss noch etwas fragen – das mache ich dann gleich separat.']},
+  empfehlung:{titel:'Empfehlungsanfrage – WhatsApp',intro:'Nur wenn der Kunde zufrieden ist! Kein Druck, kein Formulargefühl.',fragen:['Diese Anfrage kommt nur, weil Sie uns Vertrauen geschenkt haben – danke dafür.','Wenn Sie jemanden kennen, dem ein wirklich guter Schlaf fehlt – freuen wir uns über eine Empfehlung.','Wir schicken als kleines Dankeschön unsere Sommerdecke zu – das ist unser Weg, Wertschätzung zu zeigen.']},
+};
+
+const WA_TEXT = (k) => {
+  const anrede = k.name2 ? `Hallo ${k.name1.split(' ')[0]} und ${k.name2.split(' ')[0]}` : `Hallo ${k.name1.split(' ')[0]}`;
+  return `${anrede},\n\nwir denken gerne an unser Gespräch und Ihre Entscheidung für das neue Schlafsystem zurück – schön, dass Sie den Weg zu uns gefunden haben.\n\nWenn Sie jemanden kennen, dem ein wirklich guter Schlaf fehlt – Familie, Freunde, Kollegen – freuen wir uns sehr, wenn Sie uns empfehlen.\n\nAls kleines Dankeschön schenken wir Ihnen und der Person, die Sie empfehlen, jeweils unsere hochwertige Naturhaar-Sommerdecke.\n\nEinfach diese Nachricht weiterleiten oder Bescheid geben – den Rest übernehmen wir.\n\nHerzliche Grüße\n${k.berater} · Keiten Schlafberatung`;
+};
+
+// ============================================================
+// DEMO-DATEN
+// ============================================================
+
+const DEMO_KUNDEN = [
+  {
+    id:'k001',name1:'Martina Hoffmann',name2:'Klaus Hoffmann',
+    tel1:'+49 157 12345678',tel2:'+49 157 87654321',kaufdatum:dateMinus(60),lieferdatum:dateMinus(55),
+    berater:'Viktor',pfad:'A',status:'aktiv',aktuellerSchritt:'nb1',ampel:'gruen',naechsterKontakt:dateAdd(8),
+    person1:{matratze:{name:'Comfort Sensitive',quelle:'keiten'},lattenrost:{name:'Vitarioflex Kopf-/Fußverstellung',quelle:'keiten'},kissen:{name:'Nackenstützkissen High Sensitive',quelle:'keiten'},bett:{name:'Massivholz Eiche',quelle:'fremd'},breite:'90',laenge:'200',partnermatratze:true},
+    person2:{matratze:{name:'Comfort Sensitive',quelle:'keiten'},lattenrost:{name:'Vitarioflex Starr',quelle:'keiten'},kissen:{name:'Zirben-Kissen',quelle:'keiten'},bett:{name:'Massivholz Eiche',quelle:'fremd'},breite:'90',laenge:'200',partnermatratze:true},
+    kontakte:[{typ:'Erstanruf',datum:dateMinus(13),ergebnis:'alles_gut',notiz:'Beide zufrieden. Frau Hoffmann: Eingewöhnung gut. Herr Hoffmann: erste Woche Schulter, jetzt besser.'}]
+  },
+  {
+    id:'k002',name1:'Werner Steinhoff',name2:'',
+    tel1:'+49 172 98765432',tel2:'',kaufdatum:dateMinus(95),lieferdatum:dateMinus(90),
+    berater:'Franz-Josef',pfad:'B',status:'aktiv',aktuellerSchritt:'nb3',ampel:'gelb',naechsterKontakt:dateAdd(3),
+    person1:{matratze:{name:'Premium Sensitive',quelle:'keiten'},lattenrost:{name:'Stabilo Elektrisch',quelle:'keiten'},kissen:{name:'Fremdprodukt Kissen',quelle:'fremd'},bett:{name:'Fremdprodukt Bettgestell',quelle:'fremd'},breite:'100',laenge:'200',partnermatratze:false},
+    person2:null,
+    kontakte:[{typ:'Erstanruf',datum:dateMinus(48),ergebnis:'nachbedarf',notiz:'Druckgefühl Hüftbereich. Eingewöhnung abwarten.'},{typ:'Nachbetreuung 1',datum:dateMinus(34),ergebnis:'teilweise_besser',notiz:'Hüfte besser, Schulter jetzt Thema.'},{typ:'Nachbetreuung 2',datum:dateMinus(18),ergebnis:'nachbedarf',notiz:'Schulter bleibt. Zone 2 weicher stellen.'}]
+  },
+  {
+    id:'k003',name1:'Anke Brügger',name2:'Peter Brügger',
+    tel1:'+49 160 55443322',tel2:'+49 160 11223344',kaufdatum:dateMinus(145),lieferdatum:dateMinus(140),
+    berater:'Elias',pfad:'A',status:'aktiv',aktuellerSchritt:'empfehlung',ampel:'gruen',naechsterKontakt:dateAdd(0),
+    person1:{matratze:{name:'Line',quelle:'keiten'},lattenrost:{name:'Vitarioflex Elektrisch',quelle:'keiten'},kissen:{name:'Nackenstützkissen High Sensitive',quelle:'keiten'},bett:{name:'Zirbenholzbett',quelle:'keiten'},breite:'90',laenge:'200',partnermatratze:true},
+    person2:{matratze:{name:'Comfort Sensitive',quelle:'keiten'},lattenrost:{name:'Vitarioflex Elektrisch',quelle:'keiten'},kissen:{name:'Dinkel-Kissen',quelle:'keiten'},bett:{name:'Zirbenholzbett',quelle:'keiten'},breite:'90',laenge:'200',partnermatratze:true},
+    kontakte:[{typ:'Erstanruf',datum:dateMinus(98),ergebnis:'alles_gut',notiz:'Beide sehr zufrieden.'},{typ:'Nachbetreuung 1',datum:dateMinus(84),ergebnis:'alles_gut',notiz:'Alles optimal.'},{typ:'Nachbetreuung 2',datum:dateMinus(70),ergebnis:'alles_gut',notiz:'Keine Klagen.'},{typ:'Nachbetreuung 3',datum:dateMinus(56),ergebnis:'alles_gut',notiz:'Sehr zufrieden.'},{typ:'Nachbetreuung 4',datum:dateMinus(30),ergebnis:'alles_gut',notiz:'Empfehlung vorbereiten.'}]
+  }
+];
+
+// ============================================================
+// HILFSFUNKTIONEN
+// ============================================================
+
+function dateMinus(t){const d=new Date();d.setDate(d.getDate()-t);return d.toISOString().slice(0,10);}
+function dateAdd(t){const d=new Date();d.setDate(d.getDate()+t);return d.toISOString().slice(0,10);}
+function formatDatum(iso){if(!iso)return'–';const[y,m,d]=iso.split('-');return`${d}.${m}.${y}`;}
+function tageDiff(iso){const h=new Date();h.setHours(0,0,0,0);return Math.round((new Date(iso)-h)/86400000);}
+function termindringlichkeit(iso){
+  if(!iso)return{text:'kein Termin',cls:'gruen'};
+  const d=tageDiff(iso);
+  if(d<0)return{text:`${Math.abs(d)} Tage überfällig`,cls:'rot'};
+  if(d===0)return{text:'Heute',cls:'gelb'};
+  if(d<=3)return{text:`In ${d} Tag${d===1?'':'en'}`,cls:'gelb'};
+  return{text:`In ${d} Tagen`,cls:'gruen'};
+}
+function schrittLabel(id){return(PROZESS_SCHRITTE.find(x=>x.id===id)||{label:id}).label;}
+function naechsterSchritt(id){const i=PROZESS_SCHRITTE.findIndex(x=>x.id===id);if(i<0||i>=PROZESS_SCHRITTE.length-1)return null;return PROZESS_SCHRITTE[i+1];}
+function genId(){return 'k'+Date.now().toString(36);}
+
+function erstanrufFaellig(k){if(!k.lieferdatum||k.aktuellerSchritt!=='erstanruf')return null;const d=new Date(k.lieferdatum);d.setDate(d.getDate()+42);return d.toISOString().slice(0,10);}
+function erstanrufStatus(k){
+  const f=erstanrufFaellig(k);if(!f)return null;
+  const d=tageDiff(f);
+  if(d<-7)return{typ:'kritisch',text:`Erstanruf ${Math.abs(d)} Tage überfällig!`};
+  if(d<0)return{typ:'ueberfaellig',text:`Erstanruf ${Math.abs(d)} Tage überfällig`};
+  if(d<=7)return{typ:'bald',text:`Erstanruf in ${d} Tag${d===1?'':'en'} fällig`};
+  return{typ:'ok',text:`Erstanruf fällig am ${formatDatum(f)}`};
+}
+
+function personChips(produkte){
+  if(!produkte)return'';
+  const produktChips = FELDER_REIHENFOLGE.map(f=>{
+    const p=produkte[f];if(!p||!p.name)return'';
+    const eigenQ=EIGENE[f]&&EIGENE[f].includes(p.name)?'eigen':p.quelle;
+    return`<span class="chip ${eigenQ}">${STAMM[f].icon} ${p.name}</span>`;
+  }).join('');
+  const liegeChip = (produkte.breite || produkte.laenge)
+    ? `<span class="chip" style="background:rgba(80,100,160,0.15);border-color:rgba(80,100,160,0.3);color:#a0b0e0;">📏 ${produkte.breite?produkte.breite+'cm':'?'} × ${produkte.laenge?produkte.laenge+'cm':'?'}${produkte.partnermatratze?' · Partner':''}  </span>`
+    : '';
+  return produktChips + liegeChip;
+}
+function allChips(k){
+  const p1=personChips(k.person1);
+  const p2=k.person2?personChips(k.person2):'';
+  if(!p2)return p1;
+  return p1+(p2?`<span class="chip" style="background:none;border:none;color:var(--text-muted)">·</span>`+p2:'');
+}
+
+// ============================================================
+// STORAGE – FIREBASE FIRESTORE
+// ============================================================
+
+let KUNDEN = [];
+let _firestoreListener = null;
+
+// Lade-Indikator
+function zeigeLoading(an) {
+  let el = document.getElementById('fb-loading');
+  if(!el) {
+    el = document.createElement('div');
+    el.id = 'fb-loading';
+    el.style.cssText = 'position:fixed;top:60px;left:0;right:0;z-index:300;background:rgba(123,131,50,0.15);border-bottom:1px solid rgba(123,131,50,0.3);padding:8px 20px;font-size:12px;color:#b8c870;text-align:center;transition:opacity 0.3s;';
+    el.textContent = '🔄 Verbinde mit Keiten-Datenbank ...';
+    document.body.appendChild(el);
+  }
+  el.style.display = an ? 'block' : 'none';
+}
+
+function zeigeOfflineHinweis() {
+  let el = document.getElementById('fb-offline');
+  if(el) return;
+  el = document.createElement('div');
+  el.id = 'fb-offline';
+  el.style.cssText = 'position:fixed;top:60px;left:0;right:0;z-index:300;background:rgba(180,60,40,0.2);border-bottom:1px solid rgba(180,60,40,0.4);padding:8px 20px;font-size:12px;color:#f08070;text-align:center;';
+  el.textContent = '⚠️ Keine Verbindung zur Datenbank – Änderungen werden nicht synchronisiert.';
+  document.body.appendChild(el);
+}
+
+window.startFirebaseListener = function() {
+  zeigeLoading(true);
+  try {
+    _firestoreListener = window._onSnapshot(
+      window._kundenCol,
+      (snapshot) => {
+        zeigeLoading(false);
+        if(snapshot.empty && KUNDEN.length === 0) {
+          // Erste Nutzung: Demo-Daten in Firestore laden
+          ladeDemodatenNachFirestore();
+          return;
+        }
+        KUNDEN = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+        // Alle aktiven Views neu rendern
+        if(document.getElementById('view-kundenliste').classList.contains('active')) {
+          renderErinnerungBanner(); renderKundenliste();
+        }
+        if(document.getElementById('view-heute').classList.contains('active')) renderHeute();
+        if(document.getElementById('view-uebersicht').classList.contains('active')) renderUebersicht();
+        updateNavBadge();
+      },
+      (error) => {
+        console.error('Firestore Fehler:', error);
+        zeigeLoading(false);
+        zeigeOfflineHinweis();
+        // Fallback: localStorage
+        const raw = localStorage.getItem('keiten_kunden_v3');
+        if(raw) { try { KUNDEN = JSON.parse(raw); } catch(e) {} }
+        else KUNDEN = JSON.parse(JSON.stringify(DEMO_KUNDEN));
+        renderErinnerungBanner(); renderKundenliste(); updateNavBadge();
+      }
+    );
+  } catch(e) {
+    zeigeLoading(false);
+    zeigeOfflineHinweis();
+  }
+};
+
+async function ladeDemodatenNachFirestore() {
+  const demos = JSON.parse(JSON.stringify(DEMO_KUNDEN));
+  for(const k of demos) {
+    const {id, ...data} = k;
+    await window._setDoc(window._doc(window._kundenCol, id), data);
+  }
+}
+
+function kundeById(id){ return KUNDEN.find(k=>k.id===id); }
+
+async function speichereKundeFirestore(kunde) {
+  const {id, ...data} = kunde;
+  try {
+    await window._setDoc(window._doc(window._kundenCol, id), data);
+  } catch(e) {
+    console.error('Speichern fehlgeschlagen:', e);
+    // Fallback localStorage
+    localStorage.setItem('keiten_kunden_v3', JSON.stringify(KUNDEN));
+  }
+}
+
+async function kundeUpdate(id, fn) {
+  const k = kundeById(id);
+  if(!k) return;
+  const updated = fn({...k});
+  KUNDEN = KUNDEN.map(x => x.id === id ? updated : x);
+  await speichereKundeFirestore(updated);
+}
+
+function updateNavBadge() {
+  const faellig = faelligeKunden(7);
+  const navBadge = document.getElementById('heuteBadgeNav');
+  if(!navBadge) return;
+  if(faellig.length) { navBadge.textContent=faellig.length; navBadge.style.display='inline'; }
+  else navBadge.style.display='none';
+}
+
+// ============================================================
+// VIEWS
+// ============================================================
+
+function showView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  ['kundenliste','heute','neukunde','uebersicht','eintraege'].forEach((n,i)=>{
+    if(n===name)document.querySelectorAll('.nav-btn')[i].classList.add('active');
+  });
+  if(name==='kundenliste'){renderErinnerungBanner();renderKundenliste();}
+  if(name==='heute')renderHeute();
+  if(name==='uebersicht')renderUebersicht();
+  if(name==='eintraege')renderEintraege();
+  if(name==='neukunde'){renderProduktFelder('felder-p1','p1');renderProduktFelder('felder-p2','p2');}
+}
+
+// ============================================================
+// ERINNERUNG
+// ============================================================
+
+function faelligeKunden(tageVoraus) {
+  return KUNDEN
+    .filter(k => k.status !== 'abgeschlossen')
+    .map(k => {
+      const kontaktDiff = k.naechsterKontakt ? tageDiff(k.naechsterKontakt) : null;
+      const ea = erstanrufStatus(k);
+      const eaUeberfaellig = ea && (ea.typ === 'kritisch' || ea.typ === 'ueberfaellig');
+      const kontaktFaellig = kontaktDiff !== null && kontaktDiff <= tageVoraus;
+      if(!kontaktFaellig && !eaUeberfaellig) return null;
+
+      let prioritaet, label, cls;
+      if(kontaktDiff < 0) { prioritaet = 0; label = `${Math.abs(kontaktDiff)} Tage überfällig`; cls = 'ueberfaellig'; }
+      else if(kontaktDiff === 0) { prioritaet = 1; label = 'Heute'; cls = 'heute'; }
+      else if(kontaktDiff === 1) { prioritaet = 2; label = 'Morgen'; cls = 'morgen'; }
+      else { prioritaet = 3; label = `In ${kontaktDiff} Tagen`; cls = 'bald'; }
+
+      return { k, prioritaet, label, cls, schritt: schrittLabel(k.aktuellerSchritt), eaWarn: eaUeberfaellig ? ea.text : null };
+    })
+    .filter(Boolean)
+    .sort((a,b) => a.prioritaet - b.prioritaet || a.k.name1.localeCompare(b.k.name1));
+}
+
+function renderErinnerungBanner() {
+  const box = document.getElementById('erinnerungBanner');
+  const faellig = faelligeKunden(7);
+
+  // Nav-Badge immer aktualisieren
+  const navBadge = document.getElementById('heuteBadgeNav');
+  if(faellig.length) {
+    navBadge.textContent = faellig.length;
+    navBadge.style.display = 'inline';
+  } else {
+    navBadge.style.display = 'none';
+  }
+
+  if(!faellig.length) { box.innerHTML=''; return; }
+
+  const zeilen = faellig.slice(0,4).map(({k,label,cls,schritt,eaWarn}) => `
+    <div class="erinnerung-zeile ${cls}" onclick="openProfil('${k.id}')">
+      <div>
+        <span class="erinnerung-zeile-name">${k.name1}${k.name2?' & '+k.name2:''}</span>
+        <span style="font-size:12px;color:var(--text-muted);margin-left:8px;">${schritt}</span>
+        ${eaWarn?`<div style="font-size:11px;color:#f08070;margin-top:2px;">⚠️ ${eaWarn}</div>`:''}
+      </div>
+      <div class="erinnerung-zeile-info">${label}</div>
+    </div>`).join('');
+
+  const mehr = faellig.length > 4 ? `<div style="font-size:12px;color:var(--text-muted);text-align:right;margin-top:6px;">+${faellig.length-4} weitere → <span style="color:var(--holz-light);cursor:pointer;" onclick="showView('heute')">Alle anzeigen</span></div>` : '';
+
+  box.innerHTML = `<div class="erinnerung-banner" onclick="showView('heute')">
+    <div class="erinnerung-banner-title">
+      <span>🔔 ${faellig.length === 1 ? '1 Kontakt fällig' : faellig.length+' Kontakte fällig'} – nächste 7 Tage</span>
+      <span class="erinnerung-badge">${faellig.length}</span>
+    </div>
+    <div class="erinnerung-zeilen">${zeilen}</div>
+    ${mehr}
+  </div>`;
+}
+
+function renderHeute() {
+  const box = document.getElementById('heuteInhalt');
+  const faellig = faelligeKunden(7);
+
+  if(!faellig.length) {
+    box.innerHTML=`<div class="heute-leer"><div class="heute-leer-icon">✓</div>Keine fälligen Kontakte in den nächsten 7 Tagen.</div>`;
+    return;
+  }
+
+  // Gruppieren nach Zeitraum
+  const gruppen = [
+    { titel:'Überfällig', filter: e => e.prioritaet === 0 },
+    { titel:'Heute', filter: e => e.prioritaet === 1 },
+    { titel:'Morgen', filter: e => e.prioritaet === 2 },
+    { titel:'Diese Woche', filter: e => e.prioritaet === 3 },
+  ];
+
+  box.innerHTML = gruppen.map(g => {
+    const eintraege = faellig.filter(g.filter);
+    if(!eintraege.length) return '';
+    return `<div class="heute-section">
+      <div class="heute-section-title">
+        ${g.titel === 'Überfällig' ? '⚠️' : g.titel === 'Heute' ? '🔴' : g.titel === 'Morgen' ? '🟡' : '🟢'}
+        ${g.titel}
+        <span style="background:rgba(245,241,230,0.1);border-radius:20px;padding:1px 8px;font-size:10px;">${eintraege.length}</span>
+      </div>
+      <div class="kunden-grid">
+        ${eintraege.map(({k,label,cls,schritt,eaWarn}) => {
+          const t = termindringlichkeit(k.naechsterKontakt);
+          return `<div class="kunde-card erinnerung-zeile-${cls}" onclick="openProfil('${k.id}')" style="border-left:3px solid ${cls==='ueberfaellig'||cls==='heute'?'#f08070':cls==='morgen'?'#e0ad1a':'#9ed04e'};">
+            <div>
+              <div class="kunde-name">${k.name1}${k.name2?' & '+k.name2:''}</div>
+              <div class="kunde-meta">
+                <span>👤 ${k.berater}</span>
+                <span>📅 ${formatDatum(k.naechsterKontakt)}</span>
+              </div>
+              <div class="naechste-aktion"><strong>Schritt:</strong> ${schritt}</div>
+              ${eaWarn?`<div class="erstanruf-warn" style="margin-top:6px;">⚠️ ${eaWarn}</div>`:''}
+            </div>
+            <div class="kunde-right">
+              ${ampelBadge(k.ampel)}
+              <div style="font-size:13px;font-weight:600;color:${cls==='ueberfaellig'||cls==='heute'?'#f08070':cls==='morgen'?'#e0ad1a':'#9ed04e'};text-align:right;">${label}</div>
+              <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openGespraech('${k.id}')">Gespräch erfassen</button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// KUNDENLISTE
+// ============================================================
+
+function ampelBadge(a){const m={gruen:['Zufrieden','ampel-gruen'],gelb:['In Klärung','ampel-gelb'],rot:['Dringend','ampel-rot']};const[l,c]=m[a]||m.gelb;return`<span class="ampel ${c}"><span class="ampel-dot"></span>${l}</span>`;}
+
+function renderKundenliste(){
+  const grid=document.getElementById('kundenGrid');
+  const aktive=KUNDEN.filter(k=>k.status!=='abgeschlossen');
+  if(!aktive.length){grid.innerHTML=`<div class="empty-state"><div class="empty-state-icon">🛏️</div><div class="empty-state-title">Noch keine Kunden</div><div>Legen Sie den ersten Kunden an.</div></div>`;return;}
+  grid.innerHTML=aktive.map(k=>{
+    const t=termindringlichkeit(k.naechsterKontakt);
+    const ea=erstanrufStatus(k);
+    const ueberf=ea&&(ea.typ==='kritisch'||ea.typ==='ueberfaellig');
+    const isPaar=!!k.name2;
+    let warnHtml='';
+    if(ea){
+      if(ueberf)warnHtml=`<div class="erstanruf-warn">⚠️ <strong>${ea.text}</strong></div>`;
+      else if(ea.typ==='bald')warnHtml=`<div class="lieferdatum-hinweis">🕐 ${ea.text}</div>`;
+    }
+    return`<div class="kunde-card${ueberf?' ueberfaellig':''}" onclick="openProfil('${k.id}')">
+      <div>
+        <div class="kunde-name">${k.name1}${isPaar?` & ${k.name2}`:''}</div>
+        <div class="kunde-meta">
+          <span>👤 ${k.berater}</span>
+          <span>📅 Kauf: ${formatDatum(k.kaufdatum)}</span>
+          ${k.lieferdatum?`<span>🚚 Lieferung: ${formatDatum(k.lieferdatum)}</span>`:''}
+          ${isPaar?'<span>👫 Paar</span>':''}
+        </div>
+        <div class="naechste-aktion"><strong>Schritt:</strong> ${schrittLabel(k.aktuellerSchritt)}${k.pfad==='B'?` · <span class="pfad-badge pfad-b">Pfad B</span>`:''}</div>
+        <div class="produkt-chips">${allChips(k)}</div>
+        ${warnHtml}
+      </div>
+      <div class="kunde-right">
+        ${ampelBadge(k.ampel)}
+        <div style="text-align:right;">
+          <div style="font-size:13px;font-weight:600;color:${t.cls==='gruen'?'#9ed04e':t.cls==='rot'?'#f08070':'#e0ad1a'}">${t.text}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${formatDatum(k.naechsterKontakt)}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// PROFIL
+// ============================================================
+
+let aktivesKundeId=null;
+
+function openProfil(id){
+  aktivesKundeId=id;
+  const k=kundeById(id);if(!k)return;
+  const isPaar=!!k.name2;
+
+  document.getElementById('profilName').textContent=isPaar?`${k.name1} & ${k.name2}`:k.name1;
+  document.getElementById('profilMeta').innerHTML=
+    `${k.berater} · Kauf: ${formatDatum(k.kaufdatum)}`+
+    (k.lieferdatum?` · Lieferung: ${formatDatum(k.lieferdatum)}`:'')+
+    ` · <span class="pfad-badge ${k.pfad==='A'?'pfad-a':'pfad-b'}">Pfad ${k.pfad}</span>`+
+    (isPaar?' · <span style="color:#c8c0ae">👫 Paar</span>':'')+
+    (k.tel1?` · ${k.tel1}`:'')+(k.tel2?` / ${k.tel2}`:'');
+
+  const tHtml=`<div class="prozess-timeline">${PROZESS_SCHRITTE.slice(0,-1).map((s,i)=>{const idx=PROZESS_SCHRITTE.findIndex(x=>x.id===k.aktuellerSchritt);return`<div class="timeline-step ${i<idx?'done':''} ${i===idx?'active':''}"><div class="step-circle">${i<idx?'✓':i+1}</div><div class="step-label">${s.label}</div></div>`;}).join('')}</div>`;
+
+  const ea=erstanrufStatus(k);
+  let eaHtml='';
+  if(ea&&ea.typ!=='ok'){const w=ea.typ==='kritisch'||ea.typ==='ueberfaellig';eaHtml=`<div class="${w?'erstanruf-warn':'lieferdatum-hinweis'}" style="margin-bottom:16px;">${w?'⚠️':'🕐'} ${ea.text}</div>`;}
+
+  const pFelder=FELDER_REIHENFOLGE.map(f=>({key:f,...STAMM[f]}));
+  const liegeInfo = (p) => {
+    if(!p) return '';
+    const masse = (p.breite || p.laenge) ? `📏 ${p.breite?p.breite+' cm':'?'} × ${p.laenge?p.laenge+' cm':'?'}` : '';
+    const partner = p.partnermatratze ? '<span class="chip" style="background:rgba(80,100,160,0.18);border-color:rgba(80,100,160,0.35);color:#a0b0e0;display:inline-block;margin-top:4px;">Partnermatratze</span>' : '';
+    if(!masse && !partner) return '';
+    return `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">
+      ${masse ? `<div class="produkt-item-label">📐 Liegefläche</div><div class="produkt-item-wert">${masse}</div>` : ''}
+      ${partner}
+    </div>`;
+  };
+  let produktHtml='';
+  if(isPaar){
+    const rb=(produkte,titel)=>`<div class="person-block"><div class="person-block-title">${titel}</div>${pFelder.map(f=>{const p=(produkte||{})[f.key]||{};const eigenQ=p.name&&EIGENE[f.key]&&EIGENE[f.key].includes(p.name)?'eigen':p.quelle;return`<div class="produkt-item-label">${f.icon} ${f.label}</div><div class="produkt-item-wert">${p.name||'–'}</div>${p.name?`<span class="chip ${eigenQ}" style="margin-bottom:7px;display:inline-block">${eigenQ==='eigen'?'Eigener Eintrag':eigenQ==='keiten'?'Keiten':'Fremd'}</span>`:''}`}).join('')}${liegeInfo(produkte)}</div>`;
+    produktHtml=`<div class="paar-produkt-grid">${rb(k.person1,`🛏 ${k.name1.split(' ')[0]}`)}${rb(k.person2,`🛏 ${k.name2.split(' ')[0]}`)}</div>`;
+  } else {
+    produktHtml=`<div style="background:rgba(245,241,230,0.04);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:18px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">${pFelder.map(f=>{const p=(k.person1||{})[f.key]||{};const eigenQ=p.name&&EIGENE[f.key]&&EIGENE[f.key].includes(p.name)?'eigen':p.quelle;return`<div><div class="produkt-item-label">${f.icon} ${f.label}</div><div class="produkt-item-wert">${p.name||'–'}</div>${p.name?`<span class="chip ${eigenQ}" style="display:inline-block">${eigenQ==='eigen'?'Eigener Eintrag':eigenQ==='keiten'?'Keiten':'Fremd'}</span>`:''}</div>`}).join('')}<div style="grid-column:1/-1">${liegeInfo(k.person1)}</div></div>`;
+  }
+
+  let lfKey=k.aktuellerSchritt;
+  if(lfKey==='erstanruf'&&k.pfad==='B')lfKey='erstanruf_nachbedarf';
+  const lf=LEITFAEDEN[lfKey];
+  const lfHtml=lf?`<div class="leitfaden-box"><div class="leitfaden-title">💬 ${lf.titel}</div><div class="leitfaden-intro">${lf.intro}</div><ul class="leitfaden-fragen">${lf.fragen.map(f=>`<li>${f}</li>`).join('')}</ul></div>`:'';
+
+  const waHtml=k.aktuellerSchritt==='empfehlung'?`<div class="wa-box"><div class="wa-title">📱 WhatsApp-Empfehlung senden</div><p style="font-size:13px;color:#b8b09e;margin-bottom:12px;">Der Kunde ist bereit. Jetzt ist der richtige Moment.</p><button class="btn btn-wa btn-sm" onclick="openWA('${k.id}')">WhatsApp öffnen</button></div>`:'';
+
+  const verlaufHtml=(k.kontakte&&k.kontakte.length)?`<div class="kontaktverlauf"><div class="section-label">Kontaktverlauf (${k.kontakte.length})</div>${k.kontakte.slice().reverse().map(e=>`<div class="kontakt-eintrag"><div class="kontakt-header"><span class="kontakt-typ">${e.typ}</span><span class="kontakt-datum">${formatDatum(e.datum)}</span></div><div class="kontakt-notiz">${e.notiz||'–'}</div></div>`).join('')}</div>`:`<p style="color:var(--text-muted);font-size:13px;margin-bottom:14px;">Noch kein Kontakt erfasst.</p>`;
+
+  document.getElementById('profilBody').innerHTML=tHtml+eaHtml+produktHtml+lfHtml+waHtml+'<div class="divider"></div>'+verlaufHtml;
+  document.getElementById('profilFooter').innerHTML=`<button class="btn btn-ghost" onclick="closeOverlay('profilOverlay')">Schließen</button>${k.status!=='abgeschlossen'?`<button class="btn btn-primary" onclick="openGespraech('${k.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>Gespräch erfassen</button>`:''}`;
+  document.getElementById('profilOverlay').classList.add('open');
+}
+
+// ============================================================
+// GESPRÄCH
+// ============================================================
+
+function openGespraech(id){
+  aktivesKundeId=id;const k=kundeById(id);if(!k)return;
+  const naechster=naechsterSchritt(k.aktuellerSchritt);
+  document.getElementById('gespraechSubtitle').textContent=`${k.name1}${k.name2?' & '+k.name2:''} · ${schrittLabel(k.aktuellerSchritt)}`;
+  document.getElementById('gespraechBody').innerHTML=`
+    <div class="form-row"><label class="form-label">Datum</label><input class="form-input" type="date" id="g-datum" value="${new Date().toISOString().slice(0,10)}" /></div>
+    <div class="form-row"><label class="form-label">Ergebnis</label><div class="radio-group">
+      <div class="radio-opt"><input type="radio" name="g-erg" id="g-gut" value="alles_gut"><label for="g-gut">✓ Alles gut</label></div>
+      <div class="radio-opt"><input type="radio" name="g-erg" id="g-bes" value="teilweise_besser"><label for="g-bes">◑ Wird besser</label></div>
+      <div class="radio-opt"><input type="radio" name="g-erg" id="g-bed" value="nachbedarf"><label for="g-bed">⚠ Nachbedarf</label></div>
+      <div class="radio-opt"><input type="radio" name="g-erg" id="g-ne" value="nicht_erreicht"><label for="g-ne">✕ Nicht erreicht</label></div>
+    </div></div>
+    <div class="form-row"><label class="form-label">Notizen</label><textarea class="form-textarea" id="g-notiz" placeholder="Was hat der Kunde erzählt? Was ist der nächste Schritt?"></textarea></div>
+    <div class="form-row"><label class="form-label">Nächster Kontakt</label><input class="form-input" type="date" id="g-naechster" value="${naechster?dateNaechster(naechster.tage,k.lieferdatum||k.kaufdatum):dateAdd(14)}" />${naechster?`<div class="hint">Vorschlag: ${naechster.label}</div>`:''}</div>
+    <div class="form-row"><label class="form-label">Ampelstatus</label><div class="radio-group">
+      <div class="radio-opt"><input type="radio" name="g-amp" id="a-g" value="gruen" ${k.ampel==='gruen'?'checked':''}><label for="a-g" style="color:#9ed04e">● Zufrieden</label></div>
+      <div class="radio-opt"><input type="radio" name="g-amp" id="a-y" value="gelb" ${k.ampel==='gelb'?'checked':''}><label for="a-y" style="color:#e0ad1a">● In Klärung</label></div>
+      <div class="radio-opt"><input type="radio" name="g-amp" id="a-r" value="rot" ${k.ampel==='rot'?'checked':''}><label for="a-r" style="color:#f08070">● Dringend</label></div>
+    </div></div>`;
+  document.getElementById('gespraechFooter').innerHTML=`<button class="btn btn-ghost" onclick="closeOverlay('gespraechOverlay')">Abbrechen</button><button class="btn btn-primary" onclick="gespraechSpeichern()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>Speichern</button>`;
+  document.getElementById('gespraechOverlay').classList.add('open');
+}
+
+function dateNaechster(tage,basis){if(!tage)return dateAdd(14);const d=new Date(basis||new Date());d.setDate(d.getDate()+tage);const h=new Date();h.setHours(0,0,0,0);if(d<=h){h.setDate(h.getDate()+7);return h.toISOString().slice(0,10);}return d.toISOString().slice(0,10);}
+
+async function gespraechSpeichern(){
+  const k=kundeById(aktivesKundeId);if(!k)return;
+  const datum=document.getElementById('g-datum').value;
+  const ergebnis=document.querySelector('input[name="g-erg"]:checked')?.value||'nicht_erreicht';
+  const notiz=document.getElementById('g-notiz').value.trim();
+  const naechsterKontakt=document.getElementById('g-naechster').value;
+  const ampel=document.querySelector('input[name="g-amp"]:checked')?.value||k.ampel;
+  const naechster=naechsterSchritt(k.aktuellerSchritt);
+  kundeUpdate(aktivesKundeId,kunde=>{
+    let neuerPfad=kunde.pfad;
+    if(kunde.aktuellerSchritt==='erstanruf')neuerPfad=ergebnis==='alles_gut'?'A':'B';
+    let naechsterSchrittId=kunde.aktuellerSchritt;
+    if(ergebnis!=='nicht_erreicht'&&naechster)naechsterSchrittId=naechster.id;
+    return{...kunde,kontakte:[...(kunde.kontakte||[]),{typ:schrittLabel(kunde.aktuellerSchritt),datum,ergebnis,notiz}],pfad:neuerPfad,aktuellerSchritt:naechsterSchrittId,ampel,naechsterKontakt,status:naechsterSchrittId==='abgeschlossen'?'abgeschlossen':'aktiv'};
+  });
+  closeOverlay('gespraechOverlay');closeOverlay('profilOverlay');renderKundenliste();
+  const u=kundeById(aktivesKundeId);
+  if(u?.aktuellerSchritt==='empfehlung'&&ergebnis==='alles_gut')setTimeout(()=>openProfil(aktivesKundeId),200);
+}
+
+// ============================================================
+// WHATSAPP
+// ============================================================
+
+function openWA(id){
+  const k=kundeById(id);if(!k)return;
+  const text=WA_TEXT(k);
+  document.getElementById('waSubtitle').textContent=`Für ${k.name1}${k.name2?' & '+k.name2:''}`;
+
+  const waLink = (tel, label) => {
+    const url = tel
+      ? `https://wa.me/${tel.replace(/[^0-9]/g,'')}?text=${encodeURIComponent(text)}`
+      : null;
+    return url
+      ? `<a class="btn btn-wa" href="${url}" target="_blank" rel="noopener" style="flex:1;justify-content:center;">📱 ${label}</a>`
+      : `<span class="btn btn-ghost" style="flex:1;justify-content:center;opacity:0.4;cursor:default;">📱 ${label} – keine Nummer</span>`;
+  };
+
+  const tel1 = k.tel1 || '';
+  const tel2 = k.tel2 || '';
+  const isPaar = !!k.name2;
+
+  document.getElementById('waBody').innerHTML=`
+    <p style="font-size:13px;color:#b8b09e;margin-bottom:12px;">Text vorformuliert – kann vor dem Senden noch angepasst werden.</p>
+    <div class="wa-preview">${text}</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">
+      ${k.name1}: ${tel1||'keine Nummer'} ${isPaar?'<br>'+k.name2+': '+(tel2||'keine Nummer'):''}
+    </div>`;
+
+  const footerBtns = isPaar
+    ? `<button class="btn btn-ghost" onclick="closeOverlay('waOverlay')">Schließen</button>
+       <div style="display:flex;gap:8px;flex:1;flex-wrap:wrap;">
+         ${waLink(tel1, k.name1.split(' ')[0])}
+         ${waLink(tel2, k.name2.split(' ')[0])}
+       </div>`
+    : `<button class="btn btn-ghost" onclick="closeOverlay('waOverlay')">Schließen</button>
+       ${waLink(tel1, 'WhatsApp öffnen')}`;
+
+  document.getElementById('waFooter').innerHTML=footerBtns;
+  document.getElementById('waOverlay').classList.add('open');
+}
+
+// ============================================================
+// NEUER KUNDE
+// ============================================================
+
+async function kundeAnlegen(){
+  const name1=document.getElementById('nk-name1').value.trim();
+  const name2=document.getElementById('nk-name2').value.trim();
+  const kaufdatum=document.getElementById('nk-kaufdatum').value;
+  const lieferdatum=document.getElementById('nk-lieferdatum').value;
+  if(!name1||!kaufdatum){alert('Bitte Name (Person 1) und Kaufdatum ausfüllen.');return;}
+
+  function leseProdukte(prefix){
+    return {
+      ...Object.fromEntries(FELDER_REIHENFOLGE.map(f=>[f,{name:document.getElementById(`${prefix}-${f}`)?.value||'',quelle:quellenState[prefix][f]}])),
+      breite: document.getElementById(`${prefix}-breite`)?.value || '',
+      laenge: document.getElementById(`${prefix}-laenge`)?.value || '',
+      partnermatratze: document.getElementById(`${prefix}-partnermatratze`)?.checked || false,
+    };
+  }
+
+  const neuerKunde={
+    id:genId(),name1,name2,
+    tel1:document.getElementById('nk-tel1').value.trim(),
+    tel2:document.getElementById('nk-tel2').value.trim(),
+    kaufdatum,lieferdatum,
+    berater:document.getElementById('nk-berater').value,
+    person1:leseProdukte('p1'),
+    person2:name2?leseProdukte('p2'):null,
+    pfad:'A',status:'aktiv',aktuellerSchritt:'erstanruf',ampel:'gelb',
+    kontakte:[],
+    naechsterKontakt:lieferdatum?dateNaechster(42,lieferdatum):dateAdd(42)
+  };
+
+  const notiz=document.getElementById('nk-notiz').value.trim();
+  if(notiz)neuerKunde.kontakte.push({typ:'Anmerkung bei Anlage',datum:new Date().toISOString().slice(0,10),ergebnis:'notiz',notiz});
+
+  KUNDEN.push(neuerKunde);
+  await speichereKundeFirestore(neuerKunde);
+
+  document.getElementById('nk-name1').value='';
+  document.getElementById('nk-name2').value='';
+  document.getElementById('nk-tel1').value='';
+  document.getElementById('nk-tel2').value='';
+  document.getElementById('nk-kaufdatum').value='';
+  document.getElementById('nk-lieferdatum').value='';
+  document.getElementById('nk-notiz').value='';
+  switchTab(0);
+  document.getElementById('tab-p2').style.opacity='0.4';
+  document.getElementById('tab-p2').style.pointerEvents='none';
+  document.getElementById('tab-p2').textContent='🛏 Person 2';
+  showView('kundenliste');
+}
+
+// ============================================================
+// ÜBERSICHT
+// ============================================================
+
+function renderUebersicht(){
+  const alle=KUNDEN;
+  const aktiv=alle.filter(k=>k.status!=='abgeschlossen');
+  const gruen=alle.filter(k=>k.ampel==='gruen');
+  const gelb=alle.filter(k=>k.ampel==='gelb');
+  const rot=alle.filter(k=>k.ampel==='rot');
+  const empf=alle.filter(k=>k.aktuellerSchritt==='empfehlung');
+  const paare=alle.filter(k=>!!k.name2);
+  const ueber=alle.filter(k=>{const ea=erstanrufStatus(k);return ea&&(ea.typ==='kritisch'||ea.typ==='ueberfaellig');});
+  document.getElementById('statsGrid').innerHTML=`
+    <div class="stat-card"><div class="stat-zahl">${alle.length}</div><div class="stat-label">Kunden gesamt</div></div>
+    <div class="stat-card"><div class="stat-zahl" style="color:var(--accent-light)">${aktiv.length}</div><div class="stat-label">Aktiv</div></div>
+    <div class="stat-card"><div class="stat-zahl" style="color:#9ed04e">${gruen.length}</div><div class="stat-label">Zufrieden</div></div>
+    <div class="stat-card"><div class="stat-zahl" style="color:#e0ad1a">${gelb.length}</div><div class="stat-label">In Klärung</div></div>
+    <div class="stat-card"><div class="stat-zahl" style="color:#f08070">${rot.length}</div><div class="stat-label">Dringend</div></div>
+    <div class="stat-card"><div class="stat-zahl" style="color:var(--holz-light)">${empf.length}</div><div class="stat-label">Empfehlung bereit</div></div>
+    <div class="stat-card"><div class="stat-zahl" style="color:#9da343">${paare.length}</div><div class="stat-label">Paarhaushalte</div></div>
+    ${ueber.length?`<div class="stat-card" style="border-color:rgba(180,60,40,0.4)"><div class="stat-zahl" style="color:#f08070">${ueber.length}</div><div class="stat-label">Erstanruf überfällig</div></div>`:''}`;
+
+  const sortiert=[...alle].sort((a,b)=>({rot:0,gelb:1,gruen:2}[a.ampel]??3)-({rot:0,gelb:1,gruen:2}[b.ampel]??3));
+  document.getElementById('uebersichtGrid').innerHTML=sortiert.map(k=>{
+    const t=termindringlichkeit(k.naechsterKontakt);
+    return`<div class="kunde-card" onclick="openProfil('${k.id}')">
+      <div>
+        <div class="kunde-name">${k.name1}${k.name2?' & '+k.name2:''}</div>
+        <div class="kunde-meta"><span>👤 ${k.berater}</span><span>${schrittLabel(k.aktuellerSchritt)}</span></div>
+        <div class="produkt-chips">${allChips(k)}</div>
+      </div>
+      <div class="kunde-right">
+        ${ampelBadge(k.ampel)}
+        <div style="font-size:13px;font-weight:600;text-align:right;color:${t.cls==='gruen'?'#9ed04e':t.cls==='rot'?'#f08070':'#e0ad1a'}">${t.text}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// OVERLAY
+// ============================================================
+
+async function bestaetigeReset(){
+  if(!confirm('Alle Kundendaten werden auf die Beispieldaten zurückgesetzt. Fortfahren?')) return;
+  try {
+    // Alle bestehenden Dokumente löschen
+    const snap = await window._getDocs(window._kundenCol);
+    for(const d of snap.docs) await window._deleteDoc(d.ref);
+    // Demo-Daten neu laden
+    await ladeDemodatenNachFirestore();
+    showView('kundenliste');
+  } catch(e) {
+    // Fallback localStorage
+    localStorage.removeItem('keiten_kunden_v3');
+    KUNDEN = JSON.parse(JSON.stringify(DEMO_KUNDEN));
+    renderKundenliste(); showView('kundenliste');
+  }
+}
+
+function closeOverlay(id){document.getElementById(id).classList.remove('open');}
+function overlayClick(e){if(e.target.classList.contains('overlay'))e.target.classList.remove('open');}
+
+// ============================================================
+// INIT
+// ============================================================
+
+function init(){
+  document.getElementById('headerDatum').textContent=new Date().toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'});
+  document.getElementById('nk-kaufdatum').value=new Date().toISOString().slice(0,10);
+  renderProduktFelder('felder-p1','p1');
+  renderProduktFelder('felder-p2','p2');
+  // Firebase-Listener starten (wird auch von DOMContentLoaded getriggert)
+  if(window._firebaseReady && window.startFirebaseListener) {
+    window.startFirebaseListener();
+  }
+  renderErinnerungBanner();
+  renderKundenliste();
+}
+
+init();
+
+// Globale Exports für HTML onclick-Handler
+Object.assign(window, {
+  showView, openProfil, openGespraech, gespraechSpeichern,
+  openWA, kundeAnlegen, bestaetigeReset, closeOverlay, overlayClick,
+  switchTab, togglePerson2, setQuelle, toggleAddPanel,
+  addEintragFromField, verwaltungHinzufuegen, loescheEintrag,
+  startFirebaseListener: window.startFirebaseListener,
+  faelligeKunden, renderErinnerungBanner, renderHeute,
+});
+</script>
+</body>
+</html>
