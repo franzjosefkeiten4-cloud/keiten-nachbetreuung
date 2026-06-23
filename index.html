@@ -431,6 +431,21 @@ document.addEventListener('DOMContentLoaded', () => {
   </div>
 </main>
 
+<!-- MODAL: BEARBEITEN -->
+<div class="overlay" id="bearbeitenOverlay" onclick="overlayClick(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Kundendaten bearbeiten</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" id="bearbeitenSubtitle">–</div>
+      </div>
+      <button class="modal-close" onclick="closeOverlay('bearbeitenOverlay')">✕</button>
+    </div>
+    <div class="modal-body" id="bearbeitenBody"></div>
+    <div class="modal-footer" id="bearbeitenFooter"></div>
+  </div>
+</div>
+
 <!-- MODAL: PROFIL -->
 <div class="overlay" id="profilOverlay" onclick="overlayClick(event)">
   <div class="modal">
@@ -1182,8 +1197,206 @@ function openProfil(id){
   const verlaufHtml=(k.kontakte&&k.kontakte.length)?`<div class="kontaktverlauf"><div class="section-label">Kontaktverlauf (${k.kontakte.length})</div>${k.kontakte.slice().reverse().map(e=>`<div class="kontakt-eintrag"><div class="kontakt-header"><span class="kontakt-typ">${e.typ}</span><span class="kontakt-datum">${formatDatum(e.datum)}</span></div><div class="kontakt-notiz">${e.notiz||'–'}</div></div>`).join('')}</div>`:`<p style="color:var(--text-muted);font-size:13px;margin-bottom:14px;">Noch kein Kontakt erfasst.</p>`;
 
   document.getElementById('profilBody').innerHTML=tHtml+eaHtml+produktHtml+lfHtml+waHtml+'<div class="divider"></div>'+verlaufHtml;
-  document.getElementById('profilFooter').innerHTML=`<button class="btn btn-ghost" onclick="closeOverlay('profilOverlay')">Schließen</button>${k.status!=='abgeschlossen'?`<button class="btn btn-primary" onclick="openGespraech('${k.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>Gespräch erfassen</button>`:''}`;
+  document.getElementById('profilFooter').innerHTML=`
+    <button class="btn btn-ghost" onclick="closeOverlay('profilOverlay')">Schließen</button>
+    <button class="btn btn-ghost" onclick="openBearbeiten('${k.id}')" style="border-color:rgba(123,131,50,0.4);color:var(--accent-light);">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Bearbeiten
+    </button>
+    ${k.status!=='abgeschlossen'?`<button class="btn btn-primary" onclick="openGespraech('${k.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>Gespräch erfassen</button>`:''}`;
   document.getElementById('profilOverlay').classList.add('open');
+}
+
+// ============================================================
+// BEARBEITEN
+// ============================================================
+
+const bearbeitenQuellenState = {
+  p1: {matratze:'keiten',lattenrost:'keiten',kissen:'keiten',bett:'keiten'},
+  p2: {matratze:'keiten',lattenrost:'keiten',kissen:'keiten',bett:'keiten'},
+};
+
+function setQuelleB(person, feld, wert, btn) {
+  bearbeitenQuellenState[person][feld] = wert;
+  btn.closest('.quelle-toggle').querySelectorAll('.quelle-btn').forEach(b=>b.className='quelle-btn');
+  btn.className = `quelle-btn active-${wert}`;
+}
+
+function produktFelderBearbeitenHtml(prefix, produkte) {
+  return FELDER_REIHENFOLGE.map(feld => {
+    const s = STAMM[feld];
+    const selId = `b-${prefix}-${feld}`;
+    const aktWert = (produkte||{})[feld]?.name || '';
+    const aktQuelle = (produkte||{})[feld]?.quelle || 'keiten';
+    bearbeitenQuellenState[prefix][feld] = aktQuelle;
+    let opts = `<option value="">– keine / unbekannt –</option>`;
+    s.gruppen.forEach(g => {
+      opts += `<optgroup label="${g.label}">`;
+      g.items.forEach(i => opts += `<option value="${i}" ${i===aktWert?'selected':''}>${i}</option>`);
+      opts += `</optgroup>`;
+    });
+    if(EIGENE[feld]?.length) {
+      opts += `<optgroup label="Eigene Einträge">`;
+      EIGENE[feld].forEach(i => opts += `<option value="${i}" ${i===aktWert?'selected':''}>${i}</option>`);
+      opts += `</optgroup>`;
+    }
+    return `<div class="produkt-zeile" style="margin-bottom:10px;">
+      <div style="flex:1">
+        <label class="form-label">${s.icon} ${s.label}</label>
+        <select class="form-select" id="${selId}">${opts}</select>
+      </div>
+      <div class="quelle-toggle">
+        <button class="quelle-btn ${aktQuelle==='keiten'?'active-keiten':''}" onclick="setQuelleB('${prefix}','${feld}','keiten',this)">Keiten</button>
+        <button class="quelle-btn ${aktQuelle==='fremd'?'active-fremd':''}" onclick="setQuelleB('${prefix}','${feld}','fremd',this)">Fremd</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function liegefelderBearbeitenHtml(prefix, produkte) {
+  const p = produkte || {};
+  return `<div style="margin-top:4px;">
+    <div class="form-label" style="margin-bottom:8px;">📐 Liegefläche</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div>
+        <label class="form-label">Breite</label>
+        <select class="form-select" id="b-${prefix}-breite">
+          <option value="">– unbekannt –</option>
+          ${['80','90','100','120','140','160','180','200'].map(v=>`<option value="${v}" ${p.breite===v?'selected':''}>${v} cm</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Länge</label>
+        <select class="form-select" id="b-${prefix}-laenge">
+          <option value="">– unbekannt –</option>
+          ${['200','210','220'].map(v=>`<option value="${v}" ${p.laenge===v?'selected':''}>${v} cm</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:9px 12px;background:rgba(245,241,230,0.05);border:1px solid var(--border);border-radius:7px;">
+      <input type="checkbox" id="b-${prefix}-partnermatratze" ${p.partnermatratze?'checked':''} style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;" />
+      <span style="font-size:13px;color:#ddd8cc;">Partnermatratze</span>
+    </label>
+  </div>`;
+}
+
+function openBearbeiten(id) {
+  aktivesKundeId = id;
+  const k = kundeById(id); if(!k) return;
+  const isPaar = !!k.name2;
+  document.getElementById('bearbeitenSubtitle').textContent = `${k.name1}${k.name2?' & '+k.name2:''}`;
+
+  document.getElementById('bearbeitenBody').innerHTML = `
+    <div style="max-height:65vh;overflow-y:auto;padding-right:4px;">
+      <div class="section-label" style="margin-bottom:10px;">Stammdaten</div>
+      <div class="form-grid" style="margin-bottom:14px;">
+        <div class="form-row">
+          <label class="form-label">Name Person 1</label>
+          <input class="form-input" id="b-name1" value="${k.name1||''}" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">Name Person 2</label>
+          <input class="form-input" id="b-name2" value="${k.name2||''}" placeholder="leer lassen wenn Einzelperson" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">Telefon Person 1</label>
+          <input class="form-input" id="b-tel1" value="${k.tel1||''}" placeholder="+49 171 ..." />
+        </div>
+        <div class="form-row">
+          <label class="form-label">Telefon Person 2</label>
+          <input class="form-input" id="b-tel2" value="${k.tel2||''}" placeholder="+49 172 ..." />
+        </div>
+        <div class="form-row">
+          <label class="form-label">Kaufdatum</label>
+          <input class="form-input" type="date" id="b-kaufdatum" value="${k.kaufdatum||''}" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">Lieferdatum</label>
+          <input class="form-input" type="date" id="b-lieferdatum" value="${k.lieferdatum||''}" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">Berater</label>
+          <select class="form-select" id="b-berater">
+            ${['Franz-Josef','Viktor','Elias','Samuel'].map(b=>`<option value="${b}" ${k.berater===b?'selected':''}>${b}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Ampelstatus</label>
+          <select class="form-select" id="b-ampel">
+            <option value="gruen" ${k.ampel==='gruen'?'selected':''}>● Zufrieden</option>
+            <option value="gelb" ${k.ampel==='gelb'?'selected':''}>● In Klärung</option>
+            <option value="rot" ${k.ampel==='rot'?'selected':''}>● Dringend</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Nächster Kontakt</label>
+          <input class="form-input" type="date" id="b-naechsterKontakt" value="${k.naechsterKontakt||''}" />
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="section-label" style="margin-bottom:10px;">Schlafsystem Person 1</div>
+      <div class="produkt-sektion">
+        ${produktFelderBearbeitenHtml('p1', k.person1)}
+        ${liegefelderBearbeitenHtml('p1', k.person1)}
+      </div>
+
+      ${isPaar||true?`<div class="divider"></div>
+      <div class="section-label" style="margin-bottom:10px;">Schlafsystem Person 2 <span style="color:var(--text-muted);font-size:10px;">(nur ausfüllen wenn Paar)</span></div>
+      <div class="produkt-sektion">
+        ${produktFelderBearbeitenHtml('p2', k.person2)}
+        ${liegefelderBearbeitenHtml('p2', k.person2)}
+      </div>`:''}
+    </div>`;
+
+  document.getElementById('bearbeitenFooter').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeOverlay('bearbeitenOverlay')">Abbrechen</button>
+    <button class="btn btn-primary" onclick="bearbeitenSpeichern()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+      Änderungen speichern
+    </button>`;
+
+  document.getElementById('bearbeitenOverlay').classList.add('open');
+}
+
+async function bearbeitenSpeichern() {
+  const k = kundeById(aktivesKundeId); if(!k) return;
+
+  function leseProdukteFeld(prefix) {
+    return Object.fromEntries(FELDER_REIHENFOLGE.map(f => [f, {
+      name: document.getElementById(`b-${prefix}-${f}`)?.value || '',
+      quelle: bearbeitenQuellenState[prefix][f]
+    }]));
+  }
+  function leseLiege(prefix, bestehend) {
+    return {
+      ...leseProdukteFeld(prefix),
+      breite: document.getElementById(`b-${prefix}-breite`)?.value || '',
+      laenge: document.getElementById(`b-${prefix}-laenge`)?.value || '',
+      partnermatratze: document.getElementById(`b-${prefix}-partnermatratze`)?.checked || false,
+    };
+  }
+
+  const name2 = document.getElementById('b-name2').value.trim();
+
+  await kundeUpdate(aktivesKundeId, kunde => ({
+    ...kunde,
+    name1: document.getElementById('b-name1').value.trim() || kunde.name1,
+    name2: name2,
+    tel1: document.getElementById('b-tel1').value.trim(),
+    tel2: document.getElementById('b-tel2').value.trim(),
+    kaufdatum: document.getElementById('b-kaufdatum').value || kunde.kaufdatum,
+    lieferdatum: document.getElementById('b-lieferdatum').value,
+    berater: document.getElementById('b-berater').value,
+    ampel: document.getElementById('b-ampel').value,
+    naechsterKontakt: document.getElementById('b-naechsterKontakt').value || kunde.naechsterKontakt,
+    person1: leseLiege('p1', kunde.person1),
+    person2: name2 ? leseLiege('p2', kunde.person2) : null,
+  }));
+
+  closeOverlay('bearbeitenOverlay');
+  openProfil(aktivesKundeId);
+  renderKundenliste();
 }
 
 // ============================================================
@@ -1416,6 +1629,7 @@ init();
 // Globale Exports für HTML onclick-Handler
 Object.assign(window, {
   showView, openProfil, openGespraech, gespraechSpeichern,
+  openBearbeiten, bearbeitenSpeichern, setQuelleB,
   openWA, kundeAnlegen, bestaetigeReset, closeOverlay, overlayClick,
   switchTab, togglePerson2, setQuelle, toggleAddPanel,
   addEintragFromField, verwaltungHinzufuegen, loescheEintrag,
