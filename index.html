@@ -24,11 +24,13 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const KUNDEN_COL = collection(db, 'kunden');
 const AUFGABEN_COL = collection(db, 'aufgaben');
+const AUFTRAEGE_COL = collection(db, 'auftraege');
 
 // Globale Firebase-Funktionen die vom restlichen Code genutzt werden
 window._db = db;
 window._kundenCol = KUNDEN_COL;
 window._aufgabenCol = AUFGABEN_COL;
+window._auftraegeCol = AUFTRAEGE_COL;
 window._setDoc = setDoc;
 window._doc = doc;
 window._deleteDoc = deleteDoc;
@@ -317,8 +319,65 @@ document.addEventListener('DOMContentLoaded', () => {
     color: #b8c870; margin-top: 4px;
   }
 
-  @media (max-width: 560px) {
-    .beschwerde-grid { grid-template-columns: 1fr; }
+  /* AUFTRÄGE */
+  .auftrag-card {
+    background: rgba(245,241,230,0.06);
+    border: 1px solid rgba(245,241,230,0.13);
+    border-radius: var(--radius); padding: 16px 18px; margin-bottom: 10px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .auftrag-card:hover { background: rgba(245,241,230,0.10); }
+  .auftrag-nr { font-size: 11px; color: var(--text-muted); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+  .auftrag-kunde { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 600; color: #F5F1E6; margin: 2px 0 6px; }
+  .auftrag-meta { font-size: 12px; color: #c0b8a6; display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+  .auftrag-status-badge {
+    display: inline-block; font-size: 11px; font-weight: 600;
+    padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .as-offen { background: rgba(184,134,11,0.22); color: #e0ad1a; }
+  .as-anzahlung { background: rgba(80,100,160,0.22); color: #a0b0e0; }
+  .as-in_produktion { background: rgba(123,131,50,0.22); color: var(--accent-light); }
+  .as-fertig { background: rgba(90,122,42,0.28); color: #9ed04e; }
+  .as-geliefert { background: rgba(245,241,230,0.1); color: var(--text-muted); }
+
+  .position-row {
+    background: rgba(245,241,230,0.04); border: 1px solid var(--border);
+    border-radius: 7px; padding: 10px 12px; margin-bottom: 6px;
+  }
+  .position-name { font-size: 13px; font-weight: 600; color: #F5F1E6; margin-bottom: 4px; }
+  .position-meta { font-size: 11px; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 8px; }
+  .pos-status-badge {
+    display: inline-block; font-size: 10px; font-weight: 600;
+    padding: 2px 7px; border-radius: 4px;
+  }
+  .ps-bestellt { background: rgba(80,100,160,0.2); color: #a0b0e0; }
+  .ps-in_produktion { background: rgba(184,134,11,0.2); color: #e0ad1a; }
+  .ps-fertiggestellt { background: rgba(123,131,50,0.22); color: var(--accent-light); }
+  .ps-geliefert { background: rgba(90,122,42,0.28); color: #9ed04e; }
+  .ps-montiert { background: rgba(245,241,230,0.1); color: var(--text-muted); }
+  .ps-offen { background: rgba(245,241,230,0.06); color: var(--text-muted); }
+
+  .anzahlung-option {
+    flex: 1; padding: 12px; border-radius: 8px; text-align: center;
+    border: 1px solid var(--border); background: rgba(245,241,230,0.04);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .anzahlung-option.selected {
+    border-color: var(--holz); background: rgba(139,95,50,0.18);
+  }
+  .anzahlung-prozent { font-size: 22px; font-weight: 700; color: #F5F1E6; }
+  .anzahlung-skonto { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .anzahlung-option.selected .anzahlung-skonto { color: var(--holz-light); }
+
+  .zahlung-box {
+    background: rgba(90,122,42,0.10); border: 1px solid rgba(90,122,42,0.28);
+    border-radius: var(--radius); padding: 14px; margin-bottom: 14px;
+  }
+  .nachfassen-warn {
+    background: rgba(180,60,40,0.15); border: 1px solid rgba(180,60,40,0.35);
+    border-radius: 6px; padding: 7px 11px; font-size: 12px; color: #f08070;
+    margin-top: 6px;
+  }
   }
 
   /* BERATUNGSERFASSUNG */
@@ -441,6 +500,7 @@ document.addEventListener('DOMContentLoaded', () => {
   <button class="nav-btn" onclick="showView('aufgaben')">Aufgaben <span id="aufgabenBadgeNav" style="display:none;background:rgba(180,60,40,0.7);color:#F5F1E6;border-radius:20px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:4px;"></span></button>
   <button class="nav-btn" onclick="showView('neukunde')">+ Neuer Kunde</button>
   <button class="nav-btn" onclick="showView('uebersicht')">Übersicht</button>
+  <button class="nav-btn" onclick="showView('auftraege')">Aufträge <span id="auftragBadgeNav" style="display:none;background:rgba(139,95,50,0.7);color:#F5F1E6;border-radius:20px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:4px;"></span></button>
   <button class="nav-btn" onclick="showView('schlafchecks')">Schlaf-Checks</button>
   <button class="nav-btn" onclick="showView('archiv')">Archiv <span id="archivBadgeNav" style="display:none;background:rgba(245,241,230,0.2);color:#c0b8a6;border-radius:20px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:4px;"></span></button>
   <button class="nav-btn" onclick="showView('eintraege')">Einträge verwalten</button>
@@ -601,6 +661,36 @@ document.addEventListener('DOMContentLoaded', () => {
     <div id="aufgabenListe"></div>
   </div>
 
+  <!-- AUFTRÄGE -->
+  <div class="view" id="view-auftraege">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Aufträge</div>
+        <div class="page-subtitle">Werkstatt- und Auftragsabwicklung</div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="openAuftragNeu()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Neuer Auftrag
+      </button>
+    </div>
+    <div class="aufgaben-filter-bar">
+      <select class="form-select" id="ao-filter-status" onchange="renderAuftraege()">
+        <option value="">Alle Status</option>
+        <option value="offen">Offen</option>
+        <option value="anzahlung">Anzahlung ausstehend</option>
+        <option value="in_produktion">In Produktion</option>
+        <option value="fertig">Fertiggestellt</option>
+        <option value="geliefert">Geliefert</option>
+      </select>
+      <select class="form-select" id="ao-filter-typ" onchange="renderAuftraege()">
+        <option value="">Alle Typen</option>
+        <option value="privat">Privatkunde</option>
+        <option value="gewerbe">Gewerbe</option>
+      </select>
+    </div>
+    <div id="auftraegeListe"></div>
+  </div>
+
   <!-- SCHLAF-CHECKS -->
   <div class="view" id="view-schlafchecks">
     <div class="page-header">
@@ -655,6 +745,21 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>
   </div>
 </main>
+
+<!-- MODAL: AUFTRAG -->
+<div class="overlay" id="auftragOverlay" onclick="overlayClick(event)" style="z-index:300;">
+  <div class="modal" style="max-width:760px;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="auftragModalTitel">Neuer Auftrag</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" id="auftragModalSubtitel">–</div>
+      </div>
+      <button class="modal-close" onclick="closeOverlay('auftragOverlay')">✕</button>
+    </div>
+    <div class="modal-body" id="auftragBody"></div>
+    <div class="modal-footer" id="auftragFooter"></div>
+  </div>
+</div>
 
 <!-- MODAL: BERATUNGSERFASSUNG -->
 <div class="overlay" id="beratungOverlay" onclick="overlayClick(event)" style="z-index:300;">
@@ -1150,13 +1255,15 @@ window.startFirebaseListener = function() {
   zeigeLoading(true);
   let kundenGeladen = false;
   let aufgabenGeladen = false;
+  let auftraegeGeladen = false;
   function pruefeInit() {
-    if(kundenGeladen && aufgabenGeladen) {
+    if(kundenGeladen && aufgabenGeladen && auftraegeGeladen) {
       zeigeLoading(false);
       renderErinnerungBanner();
       renderKundenliste();
       updateNavBadge();
       updateAufgabenBadge();
+      updateAuftragBadge();
     }
   }
   try {
@@ -1199,6 +1306,21 @@ window.startFirebaseListener = function() {
         console.error('Firestore Aufgaben Fehler:', error);
         AUFGABEN = JSON.parse(localStorage.getItem('keiten_aufgaben_v1') || '[]');
         aufgabenGeladen = true; pruefeInit();
+      }
+    );
+    window._onSnapshot(
+      window._auftraegeCol,
+      (snapshot) => {
+        AUFTRAEGE = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+        auftraegeGeladen = true; pruefeInit();
+        if(document.getElementById('view-auftraege').classList.contains('active')) renderAuftraege();
+        updateAuftragBadge();
+        pruefeNachfassenFaellig();
+      },
+      (error) => {
+        console.error('Firestore Aufträge Fehler:', error);
+        AUFTRAEGE = JSON.parse(localStorage.getItem('keiten_auftraege_v1') || '[]');
+        auftraegeGeladen = true; pruefeInit();
       }
     );
   } catch(e) {
@@ -1260,6 +1382,70 @@ async function loescheAufgabeFirestore(id) {
 
 function aufgabeById(id) { return AUFGABEN.find(a => a.id === id); }
 
+// Aufträge Storage
+let AUFTRAEGE = JSON.parse(localStorage.getItem('keiten_auftraege_v1') || '[]');
+
+async function speichereAuftragFirestore(auftrag) {
+  const {id, ...data} = auftrag;
+  try { await window._setDoc(window._doc(window._auftraegeCol, id), data); }
+  catch(e) { localStorage.setItem('keiten_auftraege_v1', JSON.stringify(AUFTRAEGE)); }
+}
+
+async function loescheAuftragFirestore(id) {
+  AUFTRAEGE = AUFTRAEGE.filter(a => a.id !== id);
+  try { await window._deleteDoc(window._doc(window._auftraegeCol, id)); }
+  catch(e) { localStorage.setItem('keiten_auftraege_v1', JSON.stringify(AUFTRAEGE)); }
+}
+
+function auftragById(id) { return AUFTRAEGE.find(a => a.id === id); }
+
+function updateAuftragBadge() {
+  const badge = document.getElementById('auftragBadgeNav');
+  if(!badge) return;
+  const aktiv = AUFTRAEGE.filter(a => a.status !== 'geliefert').length;
+  if(aktiv) { badge.textContent=aktiv; badge.style.display='inline'; }
+  else badge.style.display='none';
+}
+
+// Auftragsummer generieren
+function genAuftragNr() {
+  const heute = new Date();
+  const jahr = heute.getFullYear().toString().slice(-2);
+  const monat = String(heute.getMonth()+1).padStart(2,'0');
+  const bestehend = AUFTRAEGE.filter(a => a.nr && a.nr.startsWith(`A${jahr}${monat}`)).length;
+  return `A${jahr}${monat}-${String(bestehend+1).padStart(3,'0')}`;
+}
+
+// Nachfassen-Prüfung (5 Tage nach Bestellung ohne AB)
+function pruefeNachfassenFaellig() {
+  AUFTRAEGE.forEach(auftrag => {
+    (auftrag.positionen||[]).forEach(pos => {
+      if(pos.bestelltAm && !pos.abErhalten) {
+        const diff = tageDiff(pos.bestelltAm);
+        if(diff <= -5) {
+          // Prüfen ob schon eine Aufgabe existiert
+          const autoKey = `nachfassen_${auftrag.id}_${pos.id}`;
+          if(!AUFGABEN.some(a => a.autoKey === autoKey)) {
+            const aufgabe = {
+              id: genId(), titel: `Nachfassen: Auftragsbestätigung ${pos.name}`,
+              typ: 'Büro', person: auftrag.berater || 'Franz-Josef',
+              kundeId: auftrag.kundeId, keinKundenbezug: false,
+              faellig: new Date().toISOString().slice(0,10),
+              prioritaet: 'hoch', status: 'offen',
+              notiz: `Auftrag ${auftrag.nr} – keine AB nach 5 Tagen. Bestellt am: ${formatDatum(pos.bestelltAm)}`,
+              erstellt: new Date().toISOString().slice(0,10),
+              autoKey
+            };
+            AUFGABEN.push(aufgabe);
+            speichereAufgabeFirestore(aufgabe);
+          }
+        }
+      }
+    });
+  });
+  updateAufgabenBadge();
+}
+
 function updateAufgabenBadge() {
   const badge = document.getElementById('aufgabenBadgeNav');
   if(!badge) return;
@@ -1288,13 +1474,14 @@ function showView(name){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
-  ['kundenliste','heute','aufgaben','neukunde','uebersicht','schlafchecks','archiv','eintraege'].forEach((n,i)=>{
+  ['kundenliste','heute','aufgaben','neukunde','uebersicht','auftraege','schlafchecks','archiv','eintraege'].forEach((n,i)=>{
     if(n===name)document.querySelectorAll('.nav-btn')[i].classList.add('active');
   });
   if(name==='kundenliste'){renderErinnerungBanner();renderKundenliste();}
   if(name==='heute')renderHeute();
   if(name==='aufgaben')renderAufgaben();
   if(name==='uebersicht')renderUebersicht();
+  if(name==='auftraege')renderAuftraege();
   if(name==='schlafchecks')renderSchlafCheckTab();
   if(name==='archiv')renderArchiv();
   if(name==='eintraege')renderEintraege();
@@ -1896,6 +2083,526 @@ async function angebotPositionLoeschen(kundeId, posId) {
 }
 
 // ============================================================
+// AUFTRAGSABWICKLUNG
+// ============================================================
+
+const POS_STATUS = ['offen','bestellt','in_produktion','fertiggestellt','geliefert','montiert'];
+const POS_STATUS_LABELS = {offen:'Offen',bestellt:'Bestellt',in_produktion:'In Produktion',fertiggestellt:'Fertiggestellt',geliefert:'Geliefert',montiert:'Montiert'};
+const ANZAHLUNG_OPTIONEN = [
+  {pct:50, skonto:0, label:'50%', sub:'0% Skonto'},
+  {pct:80, skonto:2, label:'80%', sub:'2% Skonto'},
+  {pct:100, skonto:3, label:'100%', sub:'3% Skonto'},
+];
+
+let _auftragPositionen = [];
+let _auftragAnzahlungPct = 50;
+let _aktiverAuftragId = null;
+
+function renderAuftraege() {
+  const box = document.getElementById('auftraegeListe');
+  const filterStatus = document.getElementById('ao-filter-status')?.value || '';
+  const filterTyp = document.getElementById('ao-filter-typ')?.value || '';
+
+  let liste = [...AUFTRAEGE].sort((a,b) => (b.erstellt||'').localeCompare(a.erstellt||''));
+  if(filterStatus) liste = liste.filter(a => a.status === filterStatus);
+  if(filterTyp) liste = liste.filter(a => a.typ === filterTyp);
+
+  updateAuftragBadge();
+
+  if(!liste.length) {
+    box.innerHTML=`<div class="empty-state"><div class="empty-state-icon">🔨</div><div class="empty-state-title">Noch keine Aufträge</div><div>Legen Sie den ersten Auftrag an.</div></div>`;
+    return;
+  }
+
+  box.innerHTML = liste.map(a => {
+    const kundeName = a.kundeId ? (kundeById(a.kundeId)?.name1 || '–') : (a.kundeFreitext || 'Gewerbekunde');
+    const allePos = a.positionen || [];
+    const fertigCount = allePos.filter(p => ['fertiggestellt','geliefert','montiert'].includes(p.status)).length;
+    const nachfassen = allePos.filter(p => p.bestelltAm && !p.abErhalten && tageDiff(p.bestelltAm) <= -5);
+
+    return `<div class="auftrag-card" onclick="openAuftragDetail('${a.id}')">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+        <div style="flex:1;">
+          <div class="auftrag-nr">${a.nr||'–'} · ${a.typ==='privat'?'Privatkunde':'Gewerbe'}</div>
+          <div class="auftrag-kunde">${kundeName}</div>
+          <div class="auftrag-meta">
+            <span>👤 ${a.berater||'–'}</span>
+            <span>📅 ${formatDatum(a.erstellt)}</span>
+            ${a.gesamtbetrag?`<span>€ ${Number(a.gesamtbetrag).toLocaleString('de-DE',{minimumFractionDigits:2})}</span>`:''}
+            <span>${fertigCount}/${allePos.length} Positionen fertig</span>
+          </div>
+          ${nachfassen.length?`<div class="nachfassen-warn">⚠️ ${nachfassen.length} Position(en) ohne Auftragsbestätigung – Nachfassen fällig</div>`:''}
+        </div>
+        <span class="auftrag-status-badge as-${a.status||'offen'}">${{offen:'Offen',anzahlung:'Anzahlung',in_produktion:'In Produktion',fertig:'Fertiggestellt',geliefert:'Geliefert'}[a.status]||a.status}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openAuftragNeu(kundeId='') {
+  _aktiverAuftragId = null;
+  _auftragPositionen = [];
+  _auftragAnzahlungPct = 50;
+
+  // Wenn Kunde übergeben: Positionen aus Beratung vorausfüllen
+  const k = kundeId ? kundeById(kundeId) : null;
+  if(k?.beratung?.positionen?.length) {
+    _auftragPositionen = k.beratung.positionen
+      .filter(p => p.status === 'bestellt' || p.status === 'angeboten' || p.status === 'besprochen')
+      .map(p => ({
+        id: genId(), name: p.name, menge: 1,
+        preis: p.preis || '', status: 'offen',
+        bestelltAm: '', abErhalten: false, liefertermin: '', notiz: ''
+      }));
+  }
+
+  document.getElementById('auftragModalTitel').textContent = 'Neuer Auftrag';
+  document.getElementById('auftragModalSubtitel').textContent = k ? `${k.name1}${k.name2?' & '+k.name2:''}` : 'Neuer Auftrag';
+  document.getElementById('auftragBody').innerHTML = auftragFormHtml(null, kundeId);
+  document.getElementById('auftragFooter').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeOverlay('auftragOverlay')">Abbrechen</button>
+    <button class="btn btn-primary" onclick="auftragSpeichern()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+      Auftrag anlegen
+    </button>`;
+  document.getElementById('auftragOverlay').classList.add('open');
+  renderAuftragPositionenListe();
+}
+
+function auftragFormHtml(auftrag, defaultKundeId='') {
+  const kunden = KUNDEN.filter(k => k.status !== 'abgeschlossen');
+  const selKunde = auftrag?.kundeId || defaultKundeId || '';
+  const typ = auftrag?.typ || 'privat';
+
+  return `
+    <div style="max-height:70vh;overflow-y:auto;padding-right:4px;">
+      <div class="form-grid" style="margin-bottom:14px;">
+        <div class="form-row">
+          <label class="form-label">Auftragstyp</label>
+          <select class="form-select" id="ao-typ" onchange="toggleAuftragTyp()">
+            <option value="privat" ${typ==='privat'?'selected':''}>Privatkunde</option>
+            <option value="gewerbe" ${typ==='gewerbe'?'selected':''}>Gewerbe / Industrie</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Berater</label>
+          <select class="form-select" id="ao-berater">
+            ${['Franz-Josef','Viktor','Elias','Samuel'].map(b=>`<option ${(auftrag?.berater||'Franz-Josef')===b?'selected':''}>${b}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+
+      <div id="ao-privat-block">
+        <div class="form-row">
+          <label class="form-label">Kunde</label>
+          <select class="form-select" id="ao-kunde">
+            <option value="">– Kunden wählen –</option>
+            ${kunden.map(k=>`<option value="${k.id}" ${selKunde===k.id?'selected':''}>${k.name1}${k.name2?' & '+k.name2:''}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+
+      <div id="ao-gewerbe-block" style="display:none;">
+        <div class="form-row">
+          <label class="form-label">Kundenname / Firma</label>
+          <input class="form-input" id="ao-kunde-frei" value="${auftrag?.kundeFreitext||''}" placeholder="z. B. Siemens AG, Flender GmbH ..." />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Gesamtbetrag (€)</label>
+        <input class="form-input" type="number" id="ao-betrag" value="${auftrag?.gesamtbetrag||''}" placeholder="0,00" min="0" step="0.01" oninput="updateAnzahlungBerechnung()" />
+      </div>
+
+      <div id="ao-anzahlung-block">
+        <div class="form-label" style="margin-bottom:8px;">Anzahlung</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;" id="anzahlungOptionen">
+          ${ANZAHLUNG_OPTIONEN.map(o => `
+            <div class="anzahlung-option ${_auftragAnzahlungPct===o.pct?'selected':''}" onclick="waehleAnzahlung(${o.pct},this)">
+              <div class="anzahlung-prozent">${o.label}</div>
+              <div class="anzahlung-skonto">${o.sub}</div>
+            </div>`).join('')}
+        </div>
+        <div id="ao-anzahlung-info" style="font-size:13px;color:#b8c870;background:rgba(90,122,42,0.1);border:1px solid rgba(90,122,42,0.25);border-radius:7px;padding:10px 12px;"></div>
+      </div>
+
+      <div class="divider"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="section-label" style="margin:0;">Auftragspositionen</div>
+        <button class="btn btn-ghost btn-xs" onclick="auftragPositionHinzufuegen()">+ Position</button>
+      </div>
+      <div id="ao-positionen-liste"></div>
+
+      <div style="background:rgba(245,241,230,0.04);border:1px solid var(--border);border-radius:8px;padding:12px;margin-top:6px;">
+        <div class="form-grid" style="gap:8px;">
+          <input class="form-input" id="ao-pos-name" placeholder="Bezeichnung der Position" />
+          <input class="form-input" id="ao-pos-preis" placeholder="Preis € (opt.)" type="number" min="0" step="0.01" />
+        </div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="auftragPositionHinzufuegen()">+ Hinzufügen</button>
+      </div>
+
+      <div class="form-row" style="margin-top:14px;">
+        <label class="form-label">Notiz zum Auftrag</label>
+        <textarea class="form-textarea" id="ao-notiz" placeholder="Besondere Hinweise, Maße, Materialwünsche ...">${auftrag?.notiz||''}</textarea>
+      </div>
+    </div>`;
+}
+
+function toggleAuftragTyp() {
+  const typ = document.getElementById('ao-typ')?.value;
+  document.getElementById('ao-privat-block').style.display = typ==='privat'?'block':'none';
+  document.getElementById('ao-gewerbe-block').style.display = typ==='gewerbe'?'block':'none';
+  document.getElementById('ao-anzahlung-block').style.display = typ==='privat'?'block':'none';
+}
+
+function waehleAnzahlung(pct, el) {
+  _auftragAnzahlungPct = pct;
+  document.querySelectorAll('.anzahlung-option').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  updateAnzahlungBerechnung();
+}
+
+function updateAnzahlungBerechnung() {
+  const betrag = parseFloat(document.getElementById('ao-betrag')?.value) || 0;
+  const opt = ANZAHLUNG_OPTIONEN.find(o => o.pct === _auftragAnzahlungPct);
+  if(!opt || !betrag) { document.getElementById('ao-anzahlung-info').textContent=''; return; }
+  const anzBetrag = (betrag * opt.pct / 100).toFixed(2);
+  const skontoBetrag = (betrag * opt.skonto / 100).toFixed(2);
+  const rechnungsBetrag = (betrag - parseFloat(skontoBetrag)).toFixed(2);
+  document.getElementById('ao-anzahlung-info').innerHTML =
+    `Anzahlung: <strong>€ ${Number(anzBetrag).toLocaleString('de-DE',{minimumFractionDigits:2})}</strong> &nbsp;·&nbsp; ` +
+    `Skonto: € ${Number(skontoBetrag).toLocaleString('de-DE',{minimumFractionDigits:2})} &nbsp;·&nbsp; ` +
+    `Rechnungsbetrag: <strong>€ ${Number(rechnungsBetrag).toLocaleString('de-DE',{minimumFractionDigits:2})}</strong>`;
+}
+
+function auftragPositionHinzufuegen() {
+  const name = document.getElementById('ao-pos-name')?.value.trim();
+  if(!name) return;
+  const preis = document.getElementById('ao-pos-preis')?.value || '';
+  _auftragPositionen.push({id:genId(), name, preis, status:'offen', bestelltAm:'', abErhalten:false, liefertermin:'', notiz:''});
+  document.getElementById('ao-pos-name').value='';
+  document.getElementById('ao-pos-preis').value='';
+  renderAuftragPositionenListe();
+}
+
+function renderAuftragPositionenListe() {
+  const liste = document.getElementById('ao-positionen-liste');
+  if(!liste) return;
+  if(!_auftragPositionen.length) {
+    liste.innerHTML=`<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Noch keine Positionen. Positionen unten hinzufügen.</p>`;
+    return;
+  }
+  liste.innerHTML = _auftragPositionen.map(p => `
+    <div class="position-row" id="aopr-${p.id}">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <div class="position-name">${p.name}${p.preis?` <span style="font-size:11px;color:var(--text-muted);font-weight:400;">€ ${p.preis}</span>`:''}</div>
+        <button class="btn btn-ghost btn-xs" style="color:#f08070;" onclick="auftragPositionEntfernen('${p.id}')">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function auftragPositionEntfernen(id) {
+  _auftragPositionen = _auftragPositionen.filter(p => p.id !== id);
+  renderAuftragPositionenListe();
+}
+
+async function auftragSpeichern() {
+  const typ = document.getElementById('ao-typ')?.value || 'privat';
+  const berater = document.getElementById('ao-berater')?.value || 'Franz-Josef';
+  const betrag = document.getElementById('ao-betrag')?.value || '';
+  const notiz = document.getElementById('ao-notiz')?.value.trim() || '';
+  const kundeId = typ==='privat' ? (document.getElementById('ao-kunde')?.value||'') : '';
+  const kundeFreitext = typ==='gewerbe' ? (document.getElementById('ao-kunde-frei')?.value.trim()||'') : '';
+
+  const opt = ANZAHLUNG_OPTIONEN.find(o => o.pct === _auftragAnzahlungPct) || ANZAHLUNG_OPTIONEN[0];
+  const skontoBetrag = betrag ? (parseFloat(betrag) * opt.skonto / 100).toFixed(2) : '';
+  const rechnungsBetrag = betrag ? (parseFloat(betrag) - parseFloat(skontoBetrag)).toFixed(2) : '';
+
+  const auftrag = {
+    id: _aktiverAuftragId || genId(),
+    nr: _aktiverAuftragId ? (auftragById(_aktiverAuftragId)?.nr || genAuftragNr()) : genAuftragNr(),
+    typ, berater, kundeId, kundeFreitext,
+    gesamtbetrag: betrag, notiz,
+    anzahlungPct: opt.pct, skontoPct: opt.skonto,
+    skontoBetrag, rechnungsBetrag,
+    status: 'offen',
+    zahlungseingangBestaetigt: false,
+    zahlungseingangDatum: '',
+    zahlungseingangBetrag: '',
+    positionen: _auftragPositionen,
+    erstellt: new Date().toISOString().slice(0,10),
+  };
+
+  if(_aktiverAuftragId) {
+    AUFTRAEGE = AUFTRAEGE.map(a => a.id === _aktiverAuftragId ? auftrag : a);
+  } else {
+    AUFTRAEGE.push(auftrag);
+    // Automatische Aufgaben bei neuem Privatkundenauftrag
+    if(typ === 'privat' && kundeId) {
+      const k = kundeById(kundeId);
+      const kundeName = k ? `${k.name1}${k.name2?' & '+k.name2:''}` : '';
+      await legeWiedervorlageAufgabeAn(kundeId, kundeName, new Date().toISOString().slice(0,10), `Anzahlung einholen: Auftrag ${auftrag.nr} (${opt.pct}%, € ${(parseFloat(betrag||0)*opt.pct/100).toFixed(2)})`);
+    }
+  }
+
+  await speichereAuftragFirestore(auftrag);
+  closeOverlay('auftragOverlay');
+  renderAuftraege();
+  updateAuftragBadge();
+
+  // Profil-Modal Auftrag-Block aktualisieren
+  if(kundeId && document.getElementById('profilOverlay').classList.contains('open')) {
+    openProfil(kundeId);
+  }
+}
+
+function openAuftragDetail(id) {
+  _aktiverAuftragId = id;
+  const a = auftragById(id); if(!a) return;
+  _auftragPositionen = JSON.parse(JSON.stringify(a.positionen || []));
+  _auftragAnzahlungPct = a.anzahlungPct || 50;
+
+  const kundeName = a.kundeId ? (kundeById(a.kundeId)?.name1 || '–') : (a.kundeFreitext||'–');
+  document.getElementById('auftragModalTitel').textContent = `Auftrag ${a.nr}`;
+  document.getElementById('auftragModalSubtitel').textContent = kundeName;
+
+  document.getElementById('auftragBody').innerHTML = auftragDetailHtml(a);
+  document.getElementById('auftragFooter').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeOverlay('auftragOverlay')">Schließen</button>
+    ${a.status!=='geliefert'?`<button class="btn btn-ghost" style="color:var(--accent-light);border-color:rgba(123,131,50,0.4);" onclick="openAuftragBearbeiten('${id}')">Bearbeiten</button>`:''}
+    ${!a.zahlungseingangBestaetigt&&a.typ==='privat'?`<button class="btn btn-primary" onclick="openZahlungseingang('${id}')">💶 Zahlungseingang</button>`:''}`;
+
+  document.getElementById('auftragOverlay').classList.add('open');
+}
+
+function auftragDetailHtml(a) {
+  const opt = ANZAHLUNG_OPTIONEN.find(o => o.pct === (a.anzahlungPct||50));
+  return `
+    <div style="max-height:70vh;overflow-y:auto;padding-right:4px;">
+      ${a.typ==='privat'&&!a.zahlungseingangBestaetigt?`
+        <div style="background:rgba(80,100,160,0.12);border:1px solid rgba(80,100,160,0.3);border-radius:8px;padding:12px 14px;margin-bottom:14px;">
+          <div style="font-size:12px;font-weight:600;color:#a0b0e0;margin-bottom:4px;">💶 Anzahlung ausstehend</div>
+          <div style="font-size:13px;color:#ddd8cc;">${opt?.pct||50}% · € ${Number((parseFloat(a.gesamtbetrag||0)*(opt?.pct||50)/100)).toLocaleString('de-DE',{minimumFractionDigits:2})} · ${opt?.sub||''}</div>
+        </div>` : ''}
+
+      ${a.zahlungseingangBestaetigt?`
+        <div class="zahlung-box">
+          <div style="font-size:12px;font-weight:600;color:#9ed04e;margin-bottom:4px;">✓ Zahlungseingang bestätigt</div>
+          <div style="font-size:13px;color:#ddd8cc;">€ ${Number(a.zahlungseingangBetrag||0).toLocaleString('de-DE',{minimumFractionDigits:2})} am ${formatDatum(a.zahlungseingangDatum)}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Rechnungsbetrag: € ${Number(a.rechnungsBetrag||0).toLocaleString('de-DE',{minimumFractionDigits:2})} (nach ${a.skontoPct||0}% Skonto)</div>
+        </div>` : ''}
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+        <div><div class="produkt-item-label">Gesamtbetrag</div><div class="produkt-item-wert">€ ${Number(a.gesamtbetrag||0).toLocaleString('de-DE',{minimumFractionDigits:2})}</div></div>
+        <div><div class="produkt-item-label">Berater</div><div class="produkt-item-wert">${a.berater||'–'}</div></div>
+        <div><div class="produkt-item-label">Erstellt</div><div class="produkt-item-wert">${formatDatum(a.erstellt)}</div></div>
+        <div><div class="produkt-item-label">Status</div><div class="produkt-item-wert">${a.status||'offen'}</div></div>
+      </div>
+
+      ${a.notiz?`<div style="margin-bottom:14px;"><div class="produkt-item-label">Notiz</div><div style="font-size:13px;color:#ddd8cc;">${a.notiz}</div></div>`:''}
+
+      <div class="section-label" style="margin-bottom:10px;">Positionen (${(a.positionen||[]).length})</div>
+      ${(a.positionen||[]).map(p => {
+        const nachfassen = p.bestelltAm && !p.abErhalten && tageDiff(p.bestelltAm) <= -5;
+        return `<div class="position-row">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px;">
+            <div class="position-name">${p.name}${p.preis?` <span style="font-weight:400;color:var(--text-muted);font-size:11px;">€ ${p.preis}</span>`:''}</div>
+            <span class="pos-status-badge ps-${p.status||'offen'}">${POS_STATUS_LABELS[p.status]||p.status}</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px;">
+            <div>
+              <label class="form-label">Status</label>
+              <select class="form-select" style="padding:6px 8px;font-size:12px;" onchange="posStatusAendern('${a.id}','${p.id}',this.value)">
+                ${POS_STATUS.map(s=>`<option value="${s}" ${p.status===s?'selected':''}>${POS_STATUS_LABELS[s]}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="form-label">Bestellt am</label>
+              <input class="form-input" type="date" style="padding:6px 8px;font-size:12px;" value="${p.bestelltAm||''}" onchange="posBestelltAm('${a.id}','${p.id}',this.value)" />
+            </div>
+            <div>
+              <label class="form-label">AB erhalten</label>
+              <label style="display:flex;align-items:center;gap:6px;padding-top:8px;cursor:pointer;">
+                <input type="checkbox" ${p.abErhalten?'checked':''} onchange="posAbErhalten('${a.id}','${p.id}',this.checked)" style="accent-color:var(--accent);width:15px;height:15px;" />
+                <span style="font-size:12px;color:#ddd8cc;">Ja</span>
+              </label>
+            </div>
+            <div>
+              <label class="form-label">Liefertermin</label>
+              <input class="form-input" type="date" style="padding:6px 8px;font-size:12px;" value="${p.liefertermin||''}" onchange="posLiefertermin('${a.id}','${p.id}',this.value)" />
+            </div>
+          </div>
+          ${nachfassen?`<div class="nachfassen-warn">⚠️ Keine AB seit ${Math.abs(tageDiff(p.bestelltAm))} Tagen – Nachfassen!</div>`:''}
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+async function posStatusAendern(auftragId, posId, wert) {
+  const a = auftragById(auftragId); if(!a) return;
+  const neuePos = a.positionen.map(p => p.id===posId ? {...p, status:wert} : p);
+  const allesFertig = neuePos.every(p => ['fertiggestellt','geliefert','montiert'].includes(p.status));
+  const neuerStatus = allesFertig ? 'fertig' : (a.zahlungseingangBestaetigt ? 'in_produktion' : a.status);
+
+  const updated = {...a, positionen: neuePos, status: neuerStatus};
+  AUFTRAEGE = AUFTRAEGE.map(x => x.id===auftragId ? updated : x);
+  await speichereAuftragFirestore(updated);
+
+  // Automatische Büroaufgaben wenn alles fertig
+  if(allesFertig && a.typ==='privat') {
+    const kundeName = a.kundeId ? (kundeById(a.kundeId)?.name1||'') : a.kundeFreitext||'';
+    for(const titel of ['Lieferschein erstellen','Abschlussrechnung vorbereiten','Kunden zur Lieferung kontaktieren']) {
+      const autoKey = `fertig_${auftragId}_${titel}`;
+      if(!AUFGABEN.some(x => x.autoKey===autoKey)) {
+        const aufgabe = {
+          id:genId(), titel, typ:'Büro', person: a.berater||'Franz-Josef',
+          kundeId: a.kundeId||'', keinKundenbezug:!a.kundeId,
+          faellig: new Date().toISOString().slice(0,10), prioritaet:'hoch',
+          status:'offen', notiz:`Auftrag ${a.nr} – alle Positionen fertiggestellt.`,
+          erstellt: new Date().toISOString().slice(0,10), autoKey
+        };
+        AUFGABEN.push(aufgabe);
+        await speichereAufgabeFirestore(aufgabe);
+      }
+    }
+    updateAufgabenBadge();
+  }
+  openAuftragDetail(auftragId);
+}
+
+async function posBestelltAm(auftragId, posId, wert) {
+  const a = auftragById(auftragId); if(!a) return;
+  const updated = {...a, positionen: a.positionen.map(p => p.id===posId ? {...p, bestelltAm:wert} : p)};
+  AUFTRAEGE = AUFTRAEGE.map(x => x.id===auftragId ? updated : x);
+  await speichereAuftragFirestore(updated);
+}
+
+async function posAbErhalten(auftragId, posId, wert) {
+  const a = auftragById(auftragId); if(!a) return;
+  const updated = {...a, positionen: a.positionen.map(p => p.id===posId ? {...p, abErhalten:wert} : p)};
+  AUFTRAEGE = AUFTRAEGE.map(x => x.id===auftragId ? updated : x);
+  await speichereAuftragFirestore(updated);
+}
+
+async function posLiefertermin(auftragId, posId, wert) {
+  const a = auftragById(auftragId); if(!a) return;
+  const updated = {...a, positionen: a.positionen.map(p => p.id===posId ? {...p, liefertermin:wert} : p)};
+  AUFTRAEGE = AUFTRAEGE.map(x => x.id===auftragId ? updated : x);
+  await speichereAuftragFirestore(updated);
+}
+
+function openZahlungseingang(id) {
+  const a = auftragById(id); if(!a) return;
+  const erwarteterBetrag = (parseFloat(a.gesamtbetrag||0) * (a.anzahlungPct||50) / 100).toFixed(2);
+
+  document.getElementById('auftragBody').innerHTML = `
+    <div>
+      <div style="background:rgba(90,122,42,0.12);border:1px solid rgba(90,122,42,0.3);border-radius:8px;padding:14px;margin-bottom:16px;">
+        <div style="font-size:13px;color:#9ed04e;font-weight:600;margin-bottom:4px;">Zahlungseingang bestätigen</div>
+        <div style="font-size:13px;color:#ddd8cc;">Erwartet: ${a.anzahlungPct||50}% = € ${Number(erwarteterBetrag).toLocaleString('de-DE',{minimumFractionDigits:2})}</div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Eingegangener Betrag (€)</label>
+        <input class="form-input" type="number" id="zg-betrag" value="${erwarteterBetrag}" min="0" step="0.01" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">Datum Zahlungseingang</label>
+        <input class="form-input" type="date" id="zg-datum" value="${new Date().toISOString().slice(0,10)}" />
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">
+        Nach Bestätigung werden automatisch angelegt: Aufgabe „Bestellungen auslösen" und „Zirbenkissen + Dankschreiben versenden".
+      </div>
+    </div>`;
+
+  document.getElementById('auftragFooter').innerHTML = `
+    <button class="btn btn-ghost" onclick="openAuftragDetail('${id}')">Zurück</button>
+    <button class="btn btn-primary" onclick="zahlungBestaetigen('${id}')">✓ Zahlungseingang bestätigen</button>`;
+}
+
+async function zahlungBestaetigen(id) {
+  const a = auftragById(id); if(!a) return;
+  const betrag = document.getElementById('zg-betrag')?.value || '0';
+  const datum = document.getElementById('zg-datum')?.value || new Date().toISOString().slice(0,10);
+  const skontoBetrag = (parseFloat(a.gesamtbetrag||0) * (a.skontoPct||0) / 100).toFixed(2);
+  const rechnungsBetrag = (parseFloat(a.gesamtbetrag||0) - parseFloat(skontoBetrag)).toFixed(2);
+
+  const updated = {
+    ...a, status: 'in_produktion',
+    zahlungseingangBestaetigt: true,
+    zahlungseingangDatum: datum,
+    zahlungseingangBetrag: betrag,
+    rechnungsBetrag,
+  };
+  AUFTRAEGE = AUFTRAEGE.map(x => x.id===id ? updated : x);
+  await speichereAuftragFirestore(updated);
+
+  // Automatische Aufgaben anlegen
+  const k = a.kundeId ? kundeById(a.kundeId) : null;
+  const kundeName = k ? `${k.name1}${k.name2?' & '+k.name2:''}` : a.kundeFreitext||'';
+  for(const [titel, prio] of [
+    [`Bestellungen auslösen: Auftrag ${a.nr}`, 'dringend'],
+    [`Zirbenkissen + Dankschreiben versenden: ${kundeName}`, 'hoch'],
+  ]) {
+    const autoKey = `zahlung_${id}_${titel.slice(0,20)}`;
+    if(!AUFGABEN.some(x => x.autoKey===autoKey)) {
+      const aufgabe = {
+        id:genId(), titel, typ:'Büro', person: a.berater||'Franz-Josef',
+        kundeId: a.kundeId||'', keinKundenbezug:!a.kundeId,
+        faellig: datum, prioritaet: prio, status:'offen',
+        notiz:`Auftrag ${a.nr} · Zahlungseingang: € ${Number(betrag).toLocaleString('de-DE',{minimumFractionDigits:2})} am ${formatDatum(datum)}`,
+        erstellt: new Date().toISOString().slice(0,10), autoKey
+      };
+      AUFGABEN.push(aufgabe);
+      await speichereAufgabeFirestore(aufgabe);
+    }
+  }
+
+  updateAufgabenBadge();
+  closeOverlay('auftragOverlay');
+  renderAuftraege();
+}
+
+function openAuftragBearbeiten(id) {
+  _aktiverAuftragId = id;
+  const a = auftragById(id); if(!a) return;
+  _auftragPositionen = JSON.parse(JSON.stringify(a.positionen||[]));
+  _auftragAnzahlungPct = a.anzahlungPct||50;
+
+  document.getElementById('auftragBody').innerHTML = auftragFormHtml(a, a.kundeId||'');
+  document.getElementById('auftragFooter').innerHTML = `
+    <button class="btn btn-ghost" onclick="openAuftragDetail('${id}')">Abbrechen</button>
+    <button class="btn btn-primary" onclick="auftragSpeichern()">Speichern</button>`;
+  renderAuftragPositionenListe();
+  toggleAuftragTyp();
+  setTimeout(updateAnzahlungBerechnung, 100);
+}
+
+// Auftrag im Kundenprofil anzeigen
+function auftraegeProKunde(kundeId) {
+  return AUFTRAEGE.filter(a => a.kundeId === kundeId);
+}
+
+function auftraegeProfilHtml(kundeId) {
+  const auftraege = auftraegeProKunde(kundeId);
+  return `<div class="divider"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div class="section-label" style="margin:0;">Aufträge (${auftraege.length})</div>
+      <button class="btn btn-ghost btn-xs" onclick="document.getElementById('profilOverlay').classList.remove('open');openAuftragNeu('${kundeId}')">+ Auftrag</button>
+    </div>
+    ${auftraege.length ? auftraege.map(a => `
+      <div class="auftrag-card" style="margin-bottom:8px;" onclick="document.getElementById('profilOverlay').classList.remove('open');openAuftragDetail('${a.id}')">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div class="auftrag-nr">${a.nr}</div>
+            <div style="font-size:12px;color:var(--text-muted);">€ ${Number(a.gesamtbetrag||0).toLocaleString('de-DE',{minimumFractionDigits:2})} · ${(a.positionen||[]).length} Positionen</div>
+          </div>
+          <span class="auftrag-status-badge as-${a.status||'offen'}">${{offen:'Offen',anzahlung:'Anzahlung',in_produktion:'In Produktion',fertig:'Fertig',geliefert:'Geliefert'}[a.status]||a.status}</span>
+        </div>
+      </div>`).join('')
+    : `<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Noch keine Aufträge.</p>`}`;
+}
+
+// ============================================================
 // WA-FLAG
 // ============================================================
 
@@ -2081,7 +2788,7 @@ function openProfil(id){
       ? offeneAufgaben.map(a => aufgabeCardHtml(a, true)).join('')
       : `<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Keine offenen Aufgaben.</p>`}`;
 
-  document.getElementById('profilBody').innerHTML=tHtml+eaHtml+produktHtml+beratungHtml+lfHtml+waHtml+'<div class="divider"></div>'+verlaufHtml+aufgabenHtml;
+  document.getElementById('profilBody').innerHTML=tHtml+eaHtml+produktHtml+beratungHtml+lfHtml+waHtml+'<div class="divider"></div>'+verlaufHtml+aufgabenHtml+auftraegeProfilHtml(k.id);
   document.getElementById('profilFooter').innerHTML=`
     <button class="btn btn-ghost" onclick="closeOverlay('profilOverlay')">Schließen</button>
     ${k.status!=='abgeschlossen'?`
@@ -2754,6 +3461,11 @@ Object.assign(window, {
   openBeratung, beratungSpeichern, waehleMotiv, waehleMotivSek,
   angebotPositionHinzufuegen, angebotPositionEntfernen, angebotStatusAendern,
   angebotPositionLoeschen,
+  renderAuftraege, openAuftragNeu, openAuftragDetail, openAuftragBearbeiten,
+  auftragSpeichern, toggleAuftragTyp, waehleAnzahlung, updateAnzahlungBerechnung,
+  auftragPositionHinzufuegen, auftragPositionEntfernen,
+  posStatusAendern, posBestelltAm, posAbErhalten, posLiefertermin,
+  openZahlungseingang, zahlungBestaetigen,
   renderSchlafCheckTab, toggleScBox, setSkala,
   startFirebaseListener: window.startFirebaseListener,
   faelligeKunden, renderErinnerungBanner, renderHeute,
