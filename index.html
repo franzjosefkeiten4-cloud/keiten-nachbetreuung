@@ -3100,7 +3100,8 @@ function renderKundenliste(){
           <span>📅 ${formatDatum(k.kaufdatum)}</span>
           ${k.lieferdatum&&!istGewerbe?`<span>🚚 Lieferung: ${formatDatum(k.lieferdatum)}</span>`:''}
         </div>
-        ${!istGewerbe?`<div class="naechste-aktion"><strong>Schritt:</strong> ${schrittLabel(k.aktuellerSchritt)}${k.pfad==='B'?` · <span class="pfad-badge pfad-b">Pfad B</span>`:''}</div>`:''}
+        ${!istGewerbe?`<div class="naechste-aktion"><strong>Schritt:</strong> ${schrittLabel(k.aktuellerSchritt)}${k.pfad==='B'?` · <span class="pfad-badge pfad-b">Pfad B</span>`:''}${k.nachbetreuungAktiv?` · <span style="background:rgba(184,134,11,0.22);color:#e0ad1a;border-radius:4px;font-size:10px;font-weight:700;padding:2px 7px;">🔄 Schleife aktiv</span>`:''}</div>`:''}
+        ${k.kundeStufe&&k.kundeStufe!=='gekauft'&&!istGewerbe?`<div style="margin-top:5px;"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;background:rgba(80,100,160,0.18);color:#a0b0e0;">${KUNDEN_STUFEN.find(s=>s.id===k.kundeStufe)?.icon||''} ${KUNDEN_STUFEN.find(s=>s.id===k.kundeStufe)?.label||''}</span></div>`:''}
         ${!istGewerbe?`<div class="produkt-chips">${allChips(k)}</div>`:''}
         ${warnHtml}
       </div>
@@ -3208,7 +3209,13 @@ function openProfil(id){
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       Bearbeiten
     </button>
-    ${k.status!=='abgeschlossen'&&!istGewerbe&&k.kundeStufe==='gekauft'?`<button class="btn btn-primary" onclick="openGespraech('${k.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>Gespräch erfassen</button>`:''}`;
+    ${k.status!=='abgeschlossen'&&!istGewerbe&&k.kundeStufe==='gekauft'?`
+      ${nachbetreuungAktiv(k)?`<button class="btn btn-ghost btn-sm" style="border-color:rgba(184,134,11,0.4);color:#e0ad1a;" onclick="openGespraech('${k.id}','nachfass')">🔄 Nachfass erfassen</button>`:''}
+      <button class="btn btn-ghost btn-sm" style="border-color:rgba(160,176,224,0.35);color:#a0b0e0;" onclick="openGespraech('${k.id}','rueckmeldung')">📞 Kundenrückmeldung</button>
+      <button class="btn btn-primary" onclick="openGespraech('${k.id}')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+        Gespräch erfassen
+      </button>`:''}`;
   document.getElementById('profilOverlay').classList.add('open');
 }
 
@@ -3420,27 +3427,96 @@ async function bearbeitenSpeichern() {
 // GESPRÄCH
 // ============================================================
 
-function openGespraech(id){
-  aktivesKundeId=id;const k=kundeById(id);if(!k)return;
-  const naechster=naechsterSchritt(k.aktuellerSchritt);
-  document.getElementById('gespraechSubtitle').textContent=`${k.name1}${k.name2?' & '+k.name2:''} · ${schrittLabel(k.aktuellerSchritt)}`;
+// Gibt zurück ob gerade eine aktive Nachbetreuungsschleife läuft
+function nachbetreuungAktiv(k) {
+  return k.pfad === 'B' && k.nachbetreuungAktiv === true;
+}
+
+function openGespraech(id, modus='normal'){
+  aktivesKundeId=id;
+  const k=kundeById(id);if(!k)return;
+  const istRueckmeldung = modus === 'rueckmeldung';
+  const istNachfass = modus === 'nachfass';
+  const naechster = naechsterSchritt(k.aktuellerSchritt);
+  const nbAktiv = nachbetreuungAktiv(k);
+
+  // Nächster Kontakt: bei Nachbetreuungsschleife 7 Tage, sonst planmäßig
+  const vorschlagDatum = nbAktiv || istNachfass
+    ? dateAdd(7)
+    : (naechster ? dateNaechster(naechster.tage, k.lieferdatum||k.kaufdatum) : dateAdd(14));
+
+  const vorschlagHinweis = nbAktiv || istNachfass
+    ? '<div class="hint">Vorschlag: 7 Tage (Nachbetreuungsschleife aktiv)</div>'
+    : (naechster ? `<div class="hint">Vorschlag: ${naechster.label}</div>` : '');
+
+  const titelZusatz = istRueckmeldung ? '· Kundenrückmeldung' : istNachfass ? '· Nachfass' : `· ${schrittLabel(k.aktuellerSchritt)}`;
+  document.getElementById('gespraechSubtitle').textContent=`${k.name1}${k.name2?' & '+k.name2:''} ${titelZusatz}`;
+
+  // Hinweis wenn Nachbetreuungsschleife aktiv
+  const nbHinweis = nbAktiv ? `<div class="lieferdatum-hinweis" style="margin-bottom:14px;">
+    🔄 Nachbetreuungsschleife aktiv – regulärer Rhythmus pausiert bis Problem gelöst.
+    Wenn heute alles gut ist, wird der reguläre Rhythmus wieder aufgenommen.
+  </div>` : '';
+
   document.getElementById('gespraechBody').innerHTML=`
+    ${nbHinweis}
+    <div class="form-row">
+      <label class="form-label">Gesprächstyp</label>
+      <select class="form-select" id="g-typ">
+        <option value="ausgehend" ${!istRueckmeldung?'selected':''}>Ausgehender Anruf (wir rufen an)</option>
+        <option value="rueckmeldung" ${istRueckmeldung?'selected':''}>Kundenrückmeldung (Kunde meldet sich)</option>
+        <option value="nachfass" ${istNachfass?'selected':''}>Nachfass (Nachbetreuungsschleife)</option>
+      </select>
+    </div>
     <div class="form-row"><label class="form-label">Datum</label><input class="form-input" type="date" id="g-datum" value="${new Date().toISOString().slice(0,10)}" /></div>
     <div class="form-row"><label class="form-label">Ergebnis</label><div class="radio-group">
-      <div class="radio-opt"><input type="radio" name="g-erg" id="g-gut" value="alles_gut"><label for="g-gut">✓ Alles gut</label></div>
-      <div class="radio-opt"><input type="radio" name="g-erg" id="g-bes" value="teilweise_besser"><label for="g-bes">◑ Wird besser</label></div>
-      <div class="radio-opt"><input type="radio" name="g-erg" id="g-bed" value="nachbedarf"><label for="g-bed">⚠ Nachbedarf</label></div>
-      <div class="radio-opt"><input type="radio" name="g-erg" id="g-ne" value="nicht_erreicht"><label for="g-ne">✕ Nicht erreicht</label></div>
+      <div class="radio-opt"><input type="radio" name="g-erg" id="g-gut" value="alles_gut" onchange="updateNaechsterVorschlag()"><label for="g-gut">✓ Alles gut</label></div>
+      <div class="radio-opt"><input type="radio" name="g-erg" id="g-bes" value="teilweise_besser" onchange="updateNaechsterVorschlag()"><label for="g-bes">◑ Wird besser</label></div>
+      <div class="radio-opt"><input type="radio" name="g-erg" id="g-bed" value="nachbedarf" onchange="updateNaechsterVorschlag()"><label for="g-bed">⚠ Nachbedarf</label></div>
+      <div class="radio-opt"><input type="radio" name="g-erg" id="g-ne" value="nicht_erreicht" onchange="updateNaechsterVorschlag()"><label for="g-ne">✕ Nicht erreicht</label></div>
     </div></div>
     <div class="form-row"><label class="form-label">Notizen</label><textarea class="form-textarea" id="g-notiz" placeholder="Was hat der Kunde erzählt? Was ist der nächste Schritt?"></textarea></div>
-    <div class="form-row"><label class="form-label">Nächster Kontakt</label><input class="form-input" type="date" id="g-naechster" value="${naechster?dateNaechster(naechster.tage,k.lieferdatum||k.kaufdatum):dateAdd(14)}" />${naechster?`<div class="hint">Vorschlag: ${naechster.label}</div>`:''}</div>
+    <div class="form-row">
+      <label class="form-label">Nächster Kontakt</label>
+      <input class="form-input" type="date" id="g-naechster" value="${vorschlagDatum}" />
+      <div id="g-naechster-hint">${vorschlagHinweis}</div>
+    </div>
     <div class="form-row"><label class="form-label">Ampelstatus</label><div class="radio-group">
       <div class="radio-opt"><input type="radio" name="g-amp" id="a-g" value="gruen" ${k.ampel==='gruen'?'checked':''}><label for="a-g" style="color:#9ed04e">● Zufrieden</label></div>
       <div class="radio-opt"><input type="radio" name="g-amp" id="a-y" value="gelb" ${k.ampel==='gelb'?'checked':''}><label for="a-y" style="color:#e0ad1a">● In Klärung</label></div>
       <div class="radio-opt"><input type="radio" name="g-amp" id="a-r" value="rot" ${k.ampel==='rot'?'checked':''}><label for="a-r" style="color:#f08070">● Dringend</label></div>
     </div></div>`;
-  document.getElementById('gespraechFooter').innerHTML=`<button class="btn btn-ghost" onclick="closeOverlay('gespraechOverlay')">Abbrechen</button><button class="btn btn-primary" onclick="gespraechSpeichern()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>Speichern</button>`;
+
+  document.getElementById('gespraechFooter').innerHTML=`
+    <button class="btn btn-ghost" onclick="closeOverlay('gespraechOverlay')">Abbrechen</button>
+    <button class="btn btn-primary" onclick="gespraechSpeichern()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+      Speichern
+    </button>`;
   document.getElementById('gespraechOverlay').classList.add('open');
+}
+
+function updateNaechsterVorschlag() {
+  const k = kundeById(aktivesKundeId); if(!k) return;
+  const ergebnis = document.querySelector('input[name="g-erg"]:checked')?.value;
+  const naechster = naechsterSchritt(k.aktuellerSchritt);
+  const nbAktiv = nachbetreuungAktiv(k);
+  const inp = document.getElementById('g-naechster');
+  const hint = document.getElementById('g-naechster-hint');
+  if(!inp) return;
+
+  if(ergebnis === 'nachbedarf' || ergebnis === 'teilweise_besser') {
+    // Nachbedarf → Nachbetreuungsschleife, 7 Tage
+    inp.value = dateAdd(7);
+    if(hint) hint.innerHTML = '<div class="hint" style="color:#e0ad1a;">⚠ Nachbedarf erkannt – Nachfass in 7 Tagen vorgeschlagen. Nachbetreuungsschleife wird aktiviert.</div>';
+  } else if(ergebnis === 'alles_gut' && nbAktiv) {
+    // Schleife war aktiv, jetzt gelöst → regulärer Rhythmus
+    inp.value = naechster ? dateNaechster(naechster.tage, k.lieferdatum||k.kaufdatum) : dateAdd(14);
+    if(hint) hint.innerHTML = `<div class="hint" style="color:#9ed04e;">✓ Problem gelöst – regulärer Rhythmus wird wieder aufgenommen${naechster?' ('+naechster.label+')':''}.</div>`;
+  } else if(ergebnis === 'alles_gut') {
+    inp.value = naechster ? dateNaechster(naechster.tage, k.lieferdatum||k.kaufdatum) : dateAdd(14);
+    if(hint) hint.innerHTML = naechster ? `<div class="hint">Vorschlag: ${naechster.label}</div>` : '';
+  }
 }
 
 function dateNaechster(tage,basis){if(!tage)return dateAdd(14);const d=new Date(basis||new Date());d.setDate(d.getDate()+tage);const h=new Date();h.setHours(0,0,0,0);if(d<=h){h.setDate(h.getDate()+7);return h.toISOString().slice(0,10);}return d.toISOString().slice(0,10);}
@@ -3452,32 +3528,68 @@ async function gespraechSpeichern(){
   const notiz=document.getElementById('g-notiz').value.trim();
   const naechsterKontakt=document.getElementById('g-naechster').value;
   const ampel=document.querySelector('input[name="g-amp"]:checked')?.value||k.ampel;
+  const gespraechTyp=document.getElementById('g-typ')?.value||'ausgehend';
   const naechster=naechsterSchritt(k.aktuellerSchritt);
+  const nbAktivJetzt = nachbetreuungAktiv(k);
 
-  // Schlaf-Check auslesen
+  // Schlaf-Check
   const sc = leseSchlafCheck('g', datum, k.id);
 
-  await kundeUpdate(aktivesKundeId,kunde=>{
-    let neuerPfad=kunde.pfad;
-    if(kunde.aktuellerSchritt==='erstanruf')neuerPfad=ergebnis==='alles_gut'?'A':'B';
-    let naechsterSchrittId=kunde.aktuellerSchritt;
-    if(ergebnis!=='nicht_erreicht'&&naechster)naechsterSchrittId=naechster.id;
+  await kundeUpdate(aktivesKundeId, kunde => {
+    // Nachbetreuungsschleife-Logik
+    let neuerPfad = kunde.pfad;
+    let nachbetreuungAktivNeu = kunde.nachbetreuungAktiv || false;
+    let naechsterSchrittId = kunde.aktuellerSchritt;
+
+    if(ergebnis === 'nachbedarf' || ergebnis === 'teilweise_besser') {
+      // Nachbedarf → Schleife aktivieren, Pfad B, Schritt NICHT vorziehen
+      neuerPfad = 'B';
+      nachbetreuungAktivNeu = true;
+    } else if(ergebnis === 'alles_gut') {
+      if(nbAktivJetzt) {
+        // Schleife war aktiv, jetzt gelöst → Schleife beenden, Schritt jetzt vorziehen
+        nachbetreuungAktivNeu = false;
+        if(naechster) naechsterSchrittId = naechster.id;
+      } else if(kunde.aktuellerSchritt === 'erstanruf') {
+        neuerPfad = 'A';
+        if(naechster) naechsterSchrittId = naechster.id;
+      } else {
+        if(ergebnis !== 'nicht_erreicht' && naechster) naechsterSchrittId = naechster.id;
+      }
+    } else if(ergebnis !== 'nicht_erreicht' && !nbAktivJetzt) {
+      if(naechster) naechsterSchrittId = naechster.id;
+    }
+
+    // Kontakt-Label
+    const typLabel = {
+      ausgehend: schrittLabel(kunde.aktuellerSchritt),
+      rueckmeldung: `Kundenrückmeldung (${schrittLabel(kunde.aktuellerSchritt)})`,
+      nachfass: `Nachfass (${schrittLabel(kunde.aktuellerSchritt)})`,
+    }[gespraechTyp] || schrittLabel(kunde.aktuellerSchritt);
+
     const neueSchlafchecks = sc ? [...(kunde.schlafchecks||[]), sc] : (kunde.schlafchecks||[]);
-    return{...kunde,
-      kontakte:[...(kunde.kontakte||[]),{typ:schrittLabel(kunde.aktuellerSchritt),datum,ergebnis,notiz}],
+
+    return {
+      ...kunde,
+      kontakte: [...(kunde.kontakte||[]), {typ: typLabel, datum, ergebnis, notiz}],
       schlafchecks: neueSchlafchecks,
-      pfad:neuerPfad,aktuellerSchritt:naechsterSchrittId,ampel,naechsterKontakt,
-      status:naechsterSchrittId==='abgeschlossen'?'abgeschlossen':'aktiv'
+      pfad: neuerPfad,
+      nachbetreuungAktiv: nachbetreuungAktivNeu,
+      aktuellerSchritt: naechsterSchrittId,
+      ampel, naechsterKontakt,
+      status: naechsterSchrittId === 'abgeschlossen' ? 'abgeschlossen' : 'aktiv'
     };
   });
 
-  // Wiedervorlage aus Schlaf-Check als Aufgabe anlegen
+  // Wiedervorlage aus Schlaf-Check
   if(sc?.wiedervorlage) {
     const kundeName = `${k.name1}${k.name2?' & '+k.name2:''}`;
     await legeWiedervorlageAufgabeAn(k.id, kundeName, sc.wiedervorlage, `Schlaf-Check Wiedervorlage: ${sc.massnahme}`);
   }
 
-  closeOverlay('gespraechOverlay');closeOverlay('profilOverlay');renderKundenliste();
+  closeOverlay('gespraechOverlay');
+  closeOverlay('profilOverlay');
+  renderKundenliste();
   updateAufgabenBadge();
   const u=kundeById(aktivesKundeId);
   if(u?.aktuellerSchritt==='empfehlung'&&ergebnis==='alles_gut')setTimeout(()=>openProfil(aktivesKundeId),200);
@@ -3887,7 +3999,7 @@ init();
 
 // Globale Exports für HTML onclick-Handler
 Object.assign(window, {
-  showView, openProfil, openGespraech, gespraechSpeichern,
+  showView, openProfil, openGespraech, gespraechSpeichern, updateNaechsterVorschlag,
   openBearbeiten, bearbeitenSpeichern, setQuelleB,
   kundeArchivieren, kundeReaktivieren, setWaFlag,
   openWA, kundeAnlegen, bestaetigeReset, closeOverlay, overlayClick,
