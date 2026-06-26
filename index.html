@@ -1076,9 +1076,9 @@ function renderProduktFelder(containerId, prefix) {
         <div>
           <label class="form-label">Breite</label>
           <select class="form-select" id="${prefix}-breite">
-            <option value="">– unbekannt –</option>
+            <option value="" selected>– unbekannt –</option>
             <option value="80">80 cm</option>
-            <option value="90" selected>90 cm</option>
+            <option value="90">90 cm</option>
             <option value="100">100 cm</option>
             <option value="120">120 cm</option>
             <option value="140">140 cm</option>
@@ -1090,8 +1090,8 @@ function renderProduktFelder(containerId, prefix) {
         <div>
           <label class="form-label">Länge</label>
           <select class="form-select" id="${prefix}-laenge">
-            <option value="">– unbekannt –</option>
-            <option value="200" selected>200 cm</option>
+            <option value="" selected>– unbekannt –</option>
+            <option value="200">200 cm</option>
             <option value="210">210 cm</option>
             <option value="220">220 cm</option>
           </select>
@@ -2906,7 +2906,7 @@ function renderProduktFelderInDiv(containerId, prefix) {
         <label class="form-label">Breite</label>
         <select class="form-select" id="${prefix}-breite">
           <option value="">–</option>
-          ${['80','90','100','120','140','160','180','200'].map(v=>`<option value="${v}" ${v==='90'?'selected':''}>${v} cm</option>`).join('')}
+          ${['80','90','100','120','140','160','180','200'].map(v=>`<option value="${v}">${v} cm</option>`).join('')}
         </select>
       </div>
       <div>
@@ -3861,9 +3861,6 @@ function overlayClick(e){if(e.target.classList.contains('overlay'))e.target.clas
 
 function init(){
   document.getElementById('headerDatum').textContent=new Date().toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'});
-  document.getElementById('nk-kaufdatum').value=new Date().toISOString().slice(0,10);
-  renderProduktFelder('felder-p1','p1');
-  renderProduktFelder('felder-p2','p2');
   if(window._firebaseReady && window.startFirebaseListener) {
     window.startFirebaseListener();
   }
