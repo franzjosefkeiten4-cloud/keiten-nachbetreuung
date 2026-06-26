@@ -1741,6 +1741,9 @@ function openBeratung(id) {
   window._primMotiv = b.primMotiv || '';
   window._sekMotiv = new Set(b.sekMotiv || []);
 
+  // Profil schließen, Beratung öffnet sich darüber
+  document.getElementById('profilOverlay').classList.remove('open');
+
   document.getElementById('beratungSubtitle').textContent = `${k.name1}${k.name2?' & '+k.name2:''}`;
 
   document.getElementById('beratungBody').innerHTML = `
