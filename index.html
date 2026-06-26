@@ -3483,34 +3483,56 @@ function renderZeitstrahl(k) {
   const eintraege = [...(k.kontakte||[])].reverse();
   const kundeName = k.name1.split(' ')[0];
 
+  const KANAL_LABEL = {
+    telefon:'Telefon', email:'E-Mail', whatsapp:'WhatsApp',
+    persoenlich:'Persönlich', sonstiges:'Notiz'
+  };
+
   return `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
     <div class="section-label" style="margin:0;">Kommunikationsverlauf (${eintraege.length})</div>
     <button class="btn btn-ghost btn-xs" onclick="openSchnelleintrag('${k.id}')">+ Eintrag</button>
   </div>
   ${eintraege.length ? `<div class="zeitstrahl">
-    ${eintraege.map(e => {
+    ${eintraege.map((e, i) => {
+      const origIdx = eintraege.length - 1 - i; // Index im Original-Array (nicht reversed)
       const richtung = zeitstrahlRichtung(e);
-      const kanal = e.kanal || 'telefon';
+      const kanal = e.kanal || 'sonstiges';
       const vonWem = e.vonWem || (richtung==='eingehend' ? kundeName : (e.berater||'Keiten'));
-      const ergebnisLabel = ERGEBNIS_LABELS[e.ergebnis] || '';
+
+      // Typ-Label: wenn alter Eintrag ohne kanal → Prozessschritt-Name, sonst Kanal
+      const typLabel = e.kanal
+        ? `${KANAL_LABEL[kanal]||kanal}`
+        : (e.typ || 'Kontakt');
+
       const ergebnisHtml = e.ergebnis && e.ergebnis !== 'notiz' && e.ergebnis !== 'info'
-        ? `<span class="zeitstrahl-ergebnis erg-${e.ergebnis}">${ergebnisLabel}</span>` : '';
+        ? `<span class="zeitstrahl-ergebnis erg-${e.ergebnis}">${ERGEBNIS_LABELS[e.ergebnis]||e.ergebnis}</span>` : '';
+
       return `<div class="zeitstrahl-eintrag ${richtung}">
         <div class="zeitstrahl-header">
           <span class="zeitstrahl-von">${KANAL_ICONS[kanal]||'💬'} ${vonWem}</span>
           ${richtung==='eingehend'
-            ? `<span class="zeitstrahl-kanal" style="background:rgba(80,100,160,0.12);color:#a0b0e0;border-color:rgba(80,100,160,0.3);">eingehend</span>`
+            ? `<span class="zeitstrahl-kanal" style="background:rgba(80,100,160,0.12);color:#a0b0e0;border-color:rgba(80,100,160,0.3);">↙ ${typLabel}</span>`
             : richtung==='intern'
-            ? `<span class="zeitstrahl-kanal" style="background:rgba(139,95,50,0.12);color:var(--holz-light);border-color:rgba(139,95,50,0.3);">intern</span>`
-            : `<span class="zeitstrahl-kanal">ausgehend</span>`}
-          <span class="zeitstrahl-kanal">${e.typ||''}</span>
+            ? `<span class="zeitstrahl-kanal" style="background:rgba(139,95,50,0.12);color:var(--holz-light);border-color:rgba(139,95,50,0.3);">🔒 Intern</span>`
+            : `<span class="zeitstrahl-kanal">↗ ${typLabel}</span>`}
           ${ergebnisHtml}
           <span class="zeitstrahl-datum">${formatDatum(e.datum)}</span>
+          <button class="eigene-eintrag-del" style="margin-left:4px;font-size:15px;" onclick="zeitstrahlEintragLoeschen('${k.id}',${origIdx})" title="Eintrag löschen">✕</button>
         </div>
         ${e.notiz ? `<div class="zeitstrahl-inhalt">${e.notiz}</div>` : ''}
       </div>`;
     }).join('')}
   </div>` : `<p style="color:var(--text-muted);font-size:13px;margin-bottom:14px;">Noch kein Eintrag vorhanden.</p>`}`;
+}
+
+async function zeitstrahlEintragLoeschen(kundeId, index) {
+  if(!confirm('Diesen Eintrag wirklich löschen?')) return;
+  await kundeUpdate(kundeId, k => {
+    const neueKontakte = [...(k.kontakte||[])];
+    neueKontakte.splice(index, 1);
+    return {...k, kontakte: neueKontakte};
+  });
+  openProfil(kundeId);
 }
 
 function openSchnelleintrag(id) {
@@ -4208,7 +4230,7 @@ Object.assign(window, {
   openBeratung, beratungSpeichern, waehleMotiv, waehleMotivSek,
   angebotPositionHinzufuegen, angebotPositionEntfernen, angebotStatusAendern,
   angebotPositionLoeschen,
-  openSchnelleintrag, schnellEintragSpeichern,
+  openSchnelleintrag, schnellEintragSpeichern, zeitstrahlEintragLoeschen,
   openKaufErfassen, kaufSpeichern, openLieferdatumErfassen,
   setQuelleKf,
   renderAuftraege, openAuftragNeu, openAuftragDetail, openAuftragBearbeiten,
