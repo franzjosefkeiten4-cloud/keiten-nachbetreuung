@@ -512,8 +512,8 @@ document.addEventListener('DOMContentLoaded', () => {
     <div id="erinnerungBanner"></div>
     <div class="page-header">
       <div>
-        <div class="page-title">Aktive Nachbetreuung</div>
-        <div class="page-subtitle">Alle Kunden in laufender Betreuung</div>
+        <div class="page-title" id="kundenlisteTitel">Kunden</div>
+        <div class="page-subtitle" id="kundenlisteSubtitel">Alle aktiven Kunden</div>
       </div>
     </div>
     <div class="kunden-grid" id="kundenGrid"></div>
@@ -3064,6 +3064,21 @@ function renderKundenliste(){
   const grid=document.getElementById('kundenGrid');
   const aktive=KUNDEN.filter(k=>k.status!=='abgeschlossen');
   if(!aktive.length){grid.innerHTML=`<div class="empty-state"><div class="empty-state-icon">🛏️</div><div class="empty-state-title">Noch keine Kunden</div><div>Legen Sie den ersten Kunden an.</div></div>`;return;}
+
+  // Dynamischer Titel
+  const interessenten = aktive.filter(k=>k.typ!=='gewerbe'&&['interessent','vorqualifiziert','beraten'].includes(k.kundeStufe||'gekauft')).length;
+  const nachbetreuung = aktive.filter(k=>k.typ!=='gewerbe'&&k.kundeStufe==='gekauft').length;
+  const gewerbe = aktive.filter(k=>k.typ==='gewerbe').length;
+  const titelEl = document.getElementById('kundenlisteTitel');
+  const subEl = document.getElementById('kundenlisteSubtitel');
+  if(titelEl) titelEl.textContent = 'Kunden';
+  if(subEl) {
+    const teile = [];
+    if(nachbetreuung) teile.push(`${nachbetreuung} in Nachbetreuung`);
+    if(interessenten) teile.push(`${interessenten} Interessent${interessenten===1?'':'en'}`);
+    if(gewerbe) teile.push(`${gewerbe} Gewerbekunde${gewerbe===1?'':'n'}`);
+    subEl.textContent = teile.join(' · ') || 'Alle aktiven Kunden';
+  }
   grid.innerHTML=aktive.map(k=>{
     const istGewerbe = k.typ === 'gewerbe';
     const t=termindringlichkeit(k.naechsterKontakt);
