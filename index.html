@@ -270,15 +270,53 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   .heute-leer-icon { font-size: 36px; margin-bottom: 10px; opacity: 0.4; }
 
+  /* SCHLAF-CHECK */
+  .schlaf-check-box {
+    background: rgba(80,100,160,0.10);
+    border: 1px solid rgba(80,100,160,0.25);
+    border-radius: var(--radius);
+    padding: 16px; margin-bottom: 18px;
+  }
+  .schlaf-check-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 15px; font-weight: 600;
+    color: #a0b0e0; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .skala-wrap { display: flex; gap: 6px; flex-wrap: wrap; }
+  .skala-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%; border: 1px solid rgba(245,241,230,0.15);
+    background: rgba(245,241,230,0.06); color: var(--text-muted);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: all 0.15s; display: flex; align-items: center; justify-content: center;
+  }
+  .skala-btn:hover { background: rgba(80,100,160,0.3); color: #F5F1E6; }
+  .skala-btn.selected { background: rgba(80,100,160,0.5); border-color: #a0b0e0; color: #F5F1E6; }
+  .beschwerde-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .beschwerde-item label.form-label { margin-bottom: 4px; }
+
+  /* SCHLAF-CHECK VERLAUF */
+  .schlaf-check-eintrag {
+    background: rgba(80,100,160,0.07);
+    border: 1px solid rgba(80,100,160,0.2);
+    border-radius: 8px; padding: 12px 14px; margin-bottom: 8px;
+  }
+  .schlaf-check-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+  .schlaf-check-datum { font-size: 11px; color: var(--text-muted); }
+  .schlaf-skala-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; font-weight: 600; padding: 2px 8px;
+    border-radius: 20px; background: rgba(80,100,160,0.2);
+    color: #a0b0e0;
+  }
+  .schlaf-massnahme {
+    font-size: 12px; font-weight: 500;
+    color: #b8c870; margin-top: 4px;
+  }
+
   @media (max-width: 560px) {
-    .form-grid { grid-template-columns: 1fr; }
-    .paar-produkt-grid { grid-template-columns: 1fr; }
-    .kunde-card { grid-template-columns: 1fr; }
-    .kunde-right { align-items: flex-start; }
-    .produkt-zeile { grid-template-columns: 1fr; }
-    .quelle-toggle { padding-top: 0; }
-    .stats-grid { grid-template-columns: repeat(2, 1fr); }
-    .modal-body { padding: 16px; }
+    .beschwerde-grid { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -302,6 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
   <button class="nav-btn" onclick="showView('heute')">Heute <span id="heuteBadgeNav" style="display:none;background:var(--holz);color:#F5F1E6;border-radius:20px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:4px;"></span></button>
   <button class="nav-btn" onclick="showView('neukunde')">+ Neuer Kunde</button>
   <button class="nav-btn" onclick="showView('uebersicht')">Übersicht</button>
+  <button class="nav-btn" onclick="showView('schlafchecks')">Schlaf-Checks</button>
   <button class="nav-btn" onclick="showView('archiv')">Archiv <span id="archivBadgeNav" style="display:none;background:rgba(245,241,230,0.2);color:#c0b8a6;border-radius:20px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:4px;"></span></button>
   <button class="nav-btn" onclick="showView('eintraege')">Einträge verwalten</button>
 </nav>
@@ -426,6 +465,36 @@ document.addEventListener('DOMContentLoaded', () => {
     <div class="stats-grid" id="statsGrid"></div>
     <div class="section-label">Alle Kunden nach Status</div>
     <div class="kunden-grid" id="uebersichtGrid"></div>
+  </div>
+
+  <!-- SCHLAF-CHECKS -->
+  <div class="view" id="view-schlafchecks">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Schlaf-Checks</div>
+        <div class="page-subtitle">Alle erfassten Schlaf-Checks chronologisch</div>
+      </div>
+    </div>
+    <div class="form-grid" style="margin-bottom:16px;">
+      <div class="form-row">
+        <label class="form-label">Nach Kunde filtern</label>
+        <select class="form-select" id="sc-filter-kunde" onchange="renderSchlafCheckTab()">
+          <option value="">Alle Kunden</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Nach Maßnahme filtern</label>
+        <select class="form-select" id="sc-filter-massnahme" onchange="renderSchlafCheckTab()">
+          <option value="">Alle Maßnahmen</option>
+          <option>Kein Handlungsbedarf</option>
+          <option>Beratungsgespräch</option>
+          <option>Nachjustierung</option>
+          <option>Hausbesuch</option>
+          <option>Termin in Ausstellung</option>
+        </select>
+      </div>
+    </div>
+    <div id="schlafCheckTabInhalt"></div>
   </div>
 
   <!-- ARCHIV -->
@@ -997,12 +1066,13 @@ function showView(name){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
-  ['kundenliste','heute','neukunde','uebersicht','archiv','eintraege'].forEach((n,i)=>{
+  ['kundenliste','heute','neukunde','uebersicht','schlafchecks','archiv','eintraege'].forEach((n,i)=>{
     if(n===name)document.querySelectorAll('.nav-btn')[i].classList.add('active');
   });
   if(name==='kundenliste'){renderErinnerungBanner();renderKundenliste();}
   if(name==='heute')renderHeute();
   if(name==='uebersicht')renderUebersicht();
+  if(name==='schlafchecks')renderSchlafCheckTab();
   if(name==='archiv')renderArchiv();
   if(name==='eintraege')renderEintraege();
   if(name==='neukunde'){renderProduktFelder('felder-p1','p1');renderProduktFelder('felder-p2','p2');}
@@ -1564,6 +1634,198 @@ async function gespraechSpeichern(){
   closeOverlay('gespraechOverlay');closeOverlay('profilOverlay');renderKundenliste();
   const u=kundeById(aktivesKundeId);
   if(u?.aktuellerSchritt==='empfehlung'&&ergebnis==='alles_gut')setTimeout(()=>openProfil(aktivesKundeId),200);
+}
+
+// ============================================================
+// SCHLAF-CHECK
+// ============================================================
+
+const SC_BESCHWERDEN = ['Rücken','Schulter','Hüfte','Nacken'];
+const SC_STUFEN = ['keine','leicht','mittel','stark'];
+const SC_MASSNAHMEN = ['Kein Handlungsbedarf','Beratungsgespräch','Nachjustierung','Hausbesuch','Termin in Ausstellung'];
+const SC_SCHLAF = ['kein Problem','manchmal','häufig'];
+
+function schlafCheckFormHtml(prefix) {
+  return `
+    <div class="schlaf-check-box" id="${prefix}-sc-box">
+      <div class="schlaf-check-title">
+        🌙 Schlaf-Check
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:400;cursor:pointer;font-family:'Inter',sans-serif;">
+          <input type="checkbox" id="${prefix}-sc-aktiv" onchange="toggleScBox('${prefix}')" style="accent-color:var(--accent);" />
+          <span style="color:var(--text-muted);">Schlaf-Check anhängen</span>
+        </label>
+      </div>
+      <div id="${prefix}-sc-felder" style="display:none;">
+        <div class="form-grid" style="margin-bottom:14px;">
+          <div class="form-row">
+            <label class="form-label">Schlafqualität vorher (1–10)</label>
+            <div class="skala-wrap" id="${prefix}-sc-vorher-wrap">
+              ${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button type="button" class="skala-btn" onclick="setSkala('${prefix}','vorher',${n},this)">${n}</button>`).join('')}
+            </div>
+            <input type="hidden" id="${prefix}-sc-vorher" value="" />
+          </div>
+          <div class="form-row">
+            <label class="form-label">Schlafqualität jetzt (1–10)</label>
+            <div class="skala-wrap" id="${prefix}-sc-jetzt-wrap">
+              ${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button type="button" class="skala-btn" onclick="setSkala('${prefix}','jetzt',${n},this)">${n}</button>`).join('')}
+            </div>
+            <input type="hidden" id="${prefix}-sc-jetzt" value="" />
+          </div>
+        </div>
+        <div class="beschwerde-grid">
+          ${SC_BESCHWERDEN.map(b=>`<div class="beschwerde-item">
+            <label class="form-label">${b}</label>
+            <select class="form-select" id="${prefix}-sc-${b.toLowerCase()}">
+              ${SC_STUFEN.map(s=>`<option value="${s}">${s}</option>`).join('')}
+            </select>
+          </div>`).join('')}
+        </div>
+        <div class="form-grid" style="margin-bottom:12px;">
+          <div class="form-row">
+            <label class="form-label">Einschlafen</label>
+            <select class="form-select" id="${prefix}-sc-einschlafen">
+              ${SC_SCHLAF.map(s=>`<option>${s}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-row">
+            <label class="form-label">Durchschlafen</label>
+            <select class="form-select" id="${prefix}-sc-durchschlafen">
+              ${SC_SCHLAF.map(s=>`<option>${s}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Maßnahme</label>
+          <select class="form-select" id="${prefix}-sc-massnahme">
+            ${SC_MASSNAHMEN.map(m=>`<option>${m}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Wiedervorlage</label>
+          <input class="form-input" type="date" id="${prefix}-sc-wiedervorlage" />
+          <div class="hint">Wenn gesetzt, wird automatisch ein Erinnerungstermin angelegt.</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function toggleScBox(prefix) {
+  const aktiv = document.getElementById(`${prefix}-sc-aktiv`)?.checked;
+  const felder = document.getElementById(`${prefix}-sc-felder`);
+  if(felder) felder.style.display = aktiv ? 'block' : 'none';
+}
+
+function setSkala(prefix, feld, wert, btn) {
+  document.getElementById(`${prefix}-sc-${feld}`).value = wert;
+  const wrap = document.getElementById(`${prefix}-sc-${feld}-wrap`);
+  wrap.querySelectorAll('.skala-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+function leseSchlafCheck(prefix, datum, kundeId) {
+  const aktiv = document.getElementById(`${prefix}-sc-aktiv`)?.checked;
+  if(!aktiv) return null;
+  return {
+    id: genId(),
+    kundeId,
+    datum,
+    vorher: document.getElementById(`${prefix}-sc-vorher`)?.value || '',
+    jetzt: document.getElementById(`${prefix}-sc-jetzt`)?.value || '',
+    ruecken: document.getElementById(`${prefix}-sc-rücken`)?.value || 'keine',
+    schulter: document.getElementById(`${prefix}-sc-schulter`)?.value || 'keine',
+    huefte: document.getElementById(`${prefix}-sc-hüfte`)?.value || 'keine',
+    nacken: document.getElementById(`${prefix}-sc-nacken`)?.value || 'keine',
+    einschlafen: document.getElementById(`${prefix}-sc-einschlafen`)?.value || 'kein Problem',
+    durchschlafen: document.getElementById(`${prefix}-sc-durchschlafen`)?.value || 'kein Problem',
+    massnahme: document.getElementById(`${prefix}-sc-massnahme`)?.value || 'Kein Handlungsbedarf',
+    wiedervorlage: document.getElementById(`${prefix}-sc-wiedervorlage`)?.value || '',
+  };
+}
+
+function schlafCheckVerlaufHtml(schlafchecks) {
+  if(!schlafchecks?.length) return '';
+  return `<div class="kontaktverlauf" style="margin-top:16px;">
+    <div class="section-label">Schlaf-Checks (${schlafchecks.length})</div>
+    ${schlafchecks.slice().reverse().map(sc => {
+      const trend = sc.vorher && sc.jetzt
+        ? (parseInt(sc.jetzt) > parseInt(sc.vorher) ? '↑' : parseInt(sc.jetzt) < parseInt(sc.vorher) ? '↓' : '→')
+        : '';
+      const trendColor = trend==='↑'?'#9ed04e':trend==='↓'?'#f08070':'#e0ad1a';
+      const beschwerden = [
+        sc.ruecken!=='keine'?`Rücken: ${sc.ruecken}`:'',
+        sc.schulter!=='keine'?`Schulter: ${sc.schulter}`:'',
+        sc.huefte!=='keine'?`Hüfte: ${sc.huefte}`:'',
+        sc.nacken!=='keine'?`Nacken: ${sc.nacken}`:'',
+      ].filter(Boolean).join(' · ');
+      return `<div class="schlaf-check-eintrag">
+        <div class="schlaf-check-header">
+          <div>
+            ${sc.vorher||sc.jetzt?`<span class="schlaf-skala-badge">${sc.vorher||'?'} <span style="color:${trendColor}">${trend}</span> ${sc.jetzt||'?'}</span>`:''}
+            <span class="schlaf-massnahme" style="margin-left:8px;">→ ${sc.massnahme}</span>
+          </div>
+          <span class="schlaf-check-datum">${formatDatum(sc.datum)}${sc.wiedervorlage?` · WV: ${formatDatum(sc.wiedervorlage)}`:''}</span>
+        </div>
+        ${beschwerden?`<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${beschwerden}</div>`:''}
+        ${sc.einschlafen!=='kein Problem'||sc.durchschlafen!=='kein Problem'?`<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Einschlafen: ${sc.einschlafen} · Durchschlafen: ${sc.durchschlafen}</div>`:''}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function renderSchlafCheckTab() {
+  // Kunden-Filter befüllen
+  const sel = document.getElementById('sc-filter-kunde');
+  if(sel) {
+    const aktuellerWert = sel.value;
+    sel.innerHTML = `<option value="">Alle Kunden</option>` +
+      KUNDEN.map(k=>`<option value="${k.id}">${k.name1}${k.name2?' & '+k.name2:''}</option>`).join('');
+    sel.value = aktuellerWert;
+  }
+
+  const filterKunde = document.getElementById('sc-filter-kunde')?.value || '';
+  const filterMassnahme = document.getElementById('sc-filter-massnahme')?.value || '';
+
+  // Alle Schlaf-Checks aus allen Kunden sammeln
+  let alleChecks = [];
+  KUNDEN.forEach(k => {
+    (k.schlafchecks||[]).forEach(sc => alleChecks.push({...sc, kundeId: k.id, kundeName: k.name1+(k.name2?' & '+k.name2:'')}));
+  });
+
+  if(filterKunde) alleChecks = alleChecks.filter(sc => sc.kundeId === filterKunde);
+  if(filterMassnahme) alleChecks = alleChecks.filter(sc => sc.massnahme === filterMassnahme);
+
+  alleChecks.sort((a,b) => (b.datum||'').localeCompare(a.datum||''));
+
+  const box = document.getElementById('schlafCheckTabInhalt');
+  if(!alleChecks.length) {
+    box.innerHTML=`<div class="empty-state"><div class="empty-state-icon">🌙</div><div class="empty-state-title">Noch keine Schlaf-Checks</div><div>Schlaf-Checks werden beim Erfassen eines Gesprächs optional angehängt.</div></div>`;
+    return;
+  }
+
+  box.innerHTML = alleChecks.map(sc => {
+    const trend = sc.vorher && sc.jetzt
+      ? (parseInt(sc.jetzt)>parseInt(sc.vorher)?'↑':parseInt(sc.jetzt)<parseInt(sc.vorher)?'↓':'→') : '';
+    const trendColor = trend==='↑'?'#9ed04e':trend==='↓'?'#f08070':'#e0ad1a';
+    const beschwerden = [
+      sc.ruecken!=='keine'?`Rücken: ${sc.ruecken}`:'',
+      sc.schulter!=='keine'?`Schulter: ${sc.schulter}`:'',
+      sc.huefte!=='keine'?`Hüfte: ${sc.huefte}`:'',
+      sc.nacken!=='keine'?`Nacken: ${sc.nacken}`:'',
+    ].filter(Boolean).join(' · ');
+
+    return `<div class="schlaf-check-eintrag" style="cursor:pointer;" onclick="openProfil('${sc.kundeId}')">
+      <div class="schlaf-check-header">
+        <div>
+          <strong style="color:#F5F1E6;font-size:14px;">${sc.kundeName}</strong>
+          ${sc.vorher||sc.jetzt?`<span class="schlaf-skala-badge" style="margin-left:8px;">${sc.vorher||'?'} <span style="color:${trendColor}">${trend}</span> ${sc.jetzt||'?'}</span>`:''}
+          <span class="schlaf-massnahme" style="margin-left:8px;">→ ${sc.massnahme}</span>
+        </div>
+        <span class="schlaf-check-datum">${formatDatum(sc.datum)}${sc.wiedervorlage?` · WV: ${formatDatum(sc.wiedervorlage)}`:''}</span>
+      </div>
+      ${beschwerden?`<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${beschwerden}</div>`:''}
+      ${sc.einschlafen!=='kein Problem'||sc.durchschlafen!=='kein Problem'?`<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Einschlafen: ${sc.einschlafen} · Durchschlafen: ${sc.durchschlafen}</div>`:''}
+    </div>`;
+  }).join('');
 }
 
 // ============================================================
