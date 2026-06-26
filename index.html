@@ -538,6 +538,9 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="page-subtitle" id="kundenlisteSubtitel">Alle aktiven Kunden</div>
       </div>
     </div>
+    <div style="margin-bottom:14px;">
+      <input class="form-input" id="kundenSuche" placeholder="🔍 Name suchen ..." oninput="renderKundenliste()" style="max-width:340px;" />
+    </div>
     <div class="kunden-grid" id="kundenGrid"></div>
   </div>
 
@@ -584,33 +587,71 @@ document.addEventListener('DOMContentLoaded', () => {
         <span style="font-size:13px;color:var(--text-muted);">Privatkunde · Schlafberatung</span>
       </div>
       <div class="neukunde-box">
-        <div class="form-grid">
-          <div class="form-row">
-            <label class="form-label">Name Person 1</label>
-            <input class="form-input" id="nk-name1" placeholder="z. B. Thomas Meier" />
-          </div>
-          <div class="form-row">
-            <label class="form-label">Name Person 2 (optional)</label>
-            <input class="form-input" id="nk-name2" placeholder="z. B. Sandra Meier" />
-          </div>
-          <div class="form-row">
-            <label class="form-label">Telefon Person 1</label>
-            <input class="form-input" id="nk-tel1" placeholder="+49 171 ..." />
-            <div style="display:flex;gap:6px;margin-top:6px;">
-              <button type="button" class="quelle-btn active-keiten" onclick="setWaFlag('nk','1','wa',this)" style="flex:1;text-align:center;">📱 WhatsApp</button>
-              <button type="button" class="quelle-btn" onclick="setWaFlag('nk','1','sms',this)" style="flex:1;text-align:center;">💬 SMS</button>
+        <div style="margin-bottom:16px;">
+          <div style="font-size:12px;font-weight:600;color:var(--accent-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Person 1</div>
+          <div class="form-grid">
+            <div class="form-row">
+              <label class="form-label">Anrede</label>
+              <select class="form-select" id="nk-anrede1">
+                <option value="">– ohne –</option>
+                <option value="Herr">Herr</option>
+                <option value="Frau">Frau</option>
+                <option value="Divers">Divers</option>
+              </select>
             </div>
-            <input type="hidden" id="nk-wa1" value="wa" />
-          </div>
-          <div class="form-row">
-            <label class="form-label">Telefon Person 2</label>
-            <input class="form-input" id="nk-tel2" placeholder="+49 172 ... (optional)" />
-            <div style="display:flex;gap:6px;margin-top:6px;">
-              <button type="button" class="quelle-btn active-keiten" onclick="setWaFlag('nk','2','wa',this)" style="flex:1;text-align:center;">📱 WhatsApp</button>
-              <button type="button" class="quelle-btn" onclick="setWaFlag('nk','2','sms',this)" style="flex:1;text-align:center;">💬 SMS</button>
+            <div class="form-row">
+              <label class="form-label">Vorname</label>
+              <input class="form-input" id="nk-vorname1" placeholder="z. B. Thomas" />
             </div>
-            <input type="hidden" id="nk-wa2" value="wa" />
+            <div class="form-row" style="grid-column:1/-1;">
+              <label class="form-label">Nachname</label>
+              <input class="form-input" id="nk-nachname1" placeholder="z. B. Meier" />
+            </div>
+            <div class="form-row" style="grid-column:1/-1;">
+              <label class="form-label">Telefon / WhatsApp</label>
+              <input class="form-input" id="nk-tel1" placeholder="+49 171 ..." />
+              <div style="display:flex;gap:6px;margin-top:6px;">
+                <button type="button" class="quelle-btn active-keiten" onclick="setWaFlag('nk','1','wa',this)" style="flex:1;text-align:center;">📱 WhatsApp</button>
+                <button type="button" class="quelle-btn" onclick="setWaFlag('nk','1','sms',this)" style="flex:1;text-align:center;">💬 SMS</button>
+              </div>
+              <input type="hidden" id="nk-wa1" value="wa" />
+            </div>
           </div>
+        </div>
+
+        <div style="border-top:1px solid var(--border);padding-top:14px;margin-bottom:16px;">
+          <div style="font-size:12px;font-weight:600;color:#b8b09e;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Person 2 (optional – Paar)</div>
+          <div class="form-grid">
+            <div class="form-row">
+              <label class="form-label">Anrede</label>
+              <select class="form-select" id="nk-anrede2">
+                <option value="">– ohne –</option>
+                <option value="Herr">Herr</option>
+                <option value="Frau">Frau</option>
+                <option value="Divers">Divers</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Vorname</label>
+              <input class="form-input" id="nk-vorname2" placeholder="z. B. Sandra" />
+            </div>
+            <div class="form-row" style="grid-column:1/-1;">
+              <label class="form-label">Nachname</label>
+              <input class="form-input" id="nk-nachname2" placeholder="z. B. Meier" />
+            </div>
+            <div class="form-row" style="grid-column:1/-1;">
+              <label class="form-label">Telefon / WhatsApp</label>
+              <input class="form-input" id="nk-tel2" placeholder="+49 172 ..." />
+              <div style="display:flex;gap:6px;margin-top:6px;">
+                <button type="button" class="quelle-btn active-keiten" onclick="setWaFlag('nk','2','wa',this)" style="flex:1;text-align:center;">📱 WhatsApp</button>
+                <button type="button" class="quelle-btn" onclick="setWaFlag('nk','2','sms',this)" style="flex:1;text-align:center;">💬 SMS</button>
+              </div>
+              <input type="hidden" id="nk-wa2" value="wa" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-grid" style="margin-bottom:14px;">
           <div class="form-row">
             <label class="form-label">Berater</label>
             <select class="form-select" id="nk-berater">
@@ -1251,8 +1292,29 @@ const LEITFAEDEN = {
   empfehlung:{titel:'Empfehlungsanfrage – WhatsApp',intro:'Nur wenn der Kunde zufrieden ist! Kein Druck, kein Formulargefühl.',fragen:['Diese Anfrage kommt nur, weil Sie uns Vertrauen geschenkt haben – danke dafür.','Wenn Sie jemanden kennen, dem ein wirklich guter Schlaf fehlt – freuen wir uns über eine Empfehlung.','Wir schicken als kleines Dankeschön unsere Sommerdecke zu – das ist unser Weg, Wertschätzung zu zeigen.']},
 };
 
+// Vollständiger Anzeigename (Vorname + Nachname, Fallback auf name1)
+function vollName(k, nr=1) {
+  if(nr===1) {
+    if(k.vorname1||k.nachname1) return [k.vorname1,k.nachname1].filter(Boolean).join(' ');
+    return k.name1||'';
+  } else {
+    if(k.vorname2||k.nachname2) return [k.vorname2,k.nachname2].filter(Boolean).join(' ');
+    return k.name2||'';
+  }
+}
+
+// Anrede + Nachname (für förmliche Ansprache)
+function foermlichName(k, nr=1) {
+  const anrede = nr===1 ? k.anrede1 : k.anrede2;
+  const nachname = nr===1 ? (k.nachname1||k.name1?.split(' ').slice(-1)[0]||'') : (k.nachname2||k.name2?.split(' ').slice(-1)[0]||'');
+  if(anrede && nachname) return `${anrede} ${nachname}`;
+  return vollName(k, nr);
+}
+
 const WA_TEXT = (k) => {
-  const anrede = k.name2 ? `Hallo ${k.name1.split(' ')[0]} und ${k.name2.split(' ')[0]}` : `Hallo ${k.name1.split(' ')[0]}`;
+  const n1 = vollName(k,1).split(' ')[0];
+  const n2 = vollName(k,2).split(' ')[0];
+  const anrede = k.name2 ? `Hallo ${n1} und ${n2}` : `Hallo ${n1}`;
   return `${anrede},\n\nwir denken gerne an unser Gespräch und Ihre Entscheidung für das neue Schlafsystem zurück – schön, dass Sie den Weg zu uns gefunden haben.\n\nWenn Sie jemanden kennen, dem ein wirklich guter Schlaf fehlt – Familie, Freunde, Kollegen – freuen wir uns sehr, wenn Sie uns empfehlen.\n\nAls kleines Dankeschön schenken wir Ihnen und der Person, die Sie empfehlen, jeweils unsere hochwertige Naturhaar-Sommerdecke.\n\nEinfach diese Nachricht weiterleiten oder Bescheid geben – den Rest übernehmen wir.\n\nHerzliche Grüße\n${k.berater} · Keiten Schlafberatung`;
 };
 
@@ -3102,6 +3164,13 @@ function renderKundenliste(){
   const aktive=KUNDEN.filter(k=>k.status!=='abgeschlossen');
   if(!aktive.length){grid.innerHTML=`<div class="empty-state"><div class="empty-state-icon">🛏️</div><div class="empty-state-title">Noch keine Kunden</div><div>Legen Sie den ersten Kunden an.</div></div>`;return;}
 
+  const suche = (document.getElementById('kundenSuche')?.value||'').toLowerCase().trim();
+  const gefiltert = aktive.filter(k => {
+    if(!suche) return true;
+    const haystack = [vollName(k,1), vollName(k,2), k.name1||'', k.name2||''].join(' ').toLowerCase();
+    return haystack.includes(suche);
+  });
+
   // Dynamischer Titel
   const interessenten = aktive.filter(k=>k.typ!=='gewerbe'&&['interessent','vorqualifiziert','beraten'].includes(k.kundeStufe||'gekauft')).length;
   const nachbetreuung = aktive.filter(k=>k.typ!=='gewerbe'&&k.kundeStufe==='gekauft').length;
@@ -3114,9 +3183,15 @@ function renderKundenliste(){
     if(nachbetreuung) teile.push(`${nachbetreuung} in Nachbetreuung`);
     if(interessenten) teile.push(`${interessenten} Interessent${interessenten===1?'':'en'}`);
     if(gewerbe) teile.push(`${gewerbe} Gewerbekunde${gewerbe===1?'':'n'}`);
-    subEl.textContent = teile.join(' · ') || 'Alle aktiven Kunden';
+    subEl.textContent = (suche ? `${gefiltert.length} Treffer · ` : '') + (teile.join(' · ') || 'Alle aktiven Kunden');
   }
-  grid.innerHTML=aktive.map(k=>{
+
+  if(!gefiltert.length) {
+    grid.innerHTML=`<div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-title">${suche?'Kein Treffer':'Noch keine Kunden'}</div><div>${suche?'Andere Schreibweise versuchen.':'Legen Sie den ersten Kunden an.'}</div></div>`;
+    return;
+  }
+
+  grid.innerHTML=gefiltert.map(k=>{
     const istGewerbe = k.typ === 'gewerbe';
     const t=termindringlichkeit(k.naechsterKontakt);
     const ea=erstanrufStatus(k);
@@ -3126,20 +3201,23 @@ function renderKundenliste(){
       if(ueberf)warnHtml=`<div class="erstanruf-warn">⚠️ <strong>${ea.text}</strong></div>`;
       else if(ea.typ==='bald')warnHtml=`<div class="lieferdatum-hinweis">🕐 ${ea.text}</div>`;
     }
-    const ansprechpartner = istGewerbe && k.name2 ? ` · ${k.name2}` : (k.name2 ? ` & ${k.name2}` : '');
+    const n1 = vollName(k,1);
+    const n2 = vollName(k,2);
+    const ansprechpartner = istGewerbe && n2 ? ` · ${n2}` : (n2 ? ` & ${n2}` : '');
+    const anredeStr = k.anrede1 ? `${k.anrede1} ` : '';
     return`<div class="kunde-card${ueberf?' ueberfaellig':''}" onclick="openProfil('${k.id}')">
       <div>
-        <div class="kunde-name">${k.name1}${ansprechpartner}
+        <div class="kunde-name">${anredeStr}${n1}${ansprechpartner}
           ${istGewerbe?`<span class="chip" style="margin-left:6px;background:rgba(139,95,50,0.18);border-color:rgba(139,95,50,0.35);color:var(--holz-light);vertical-align:middle;">🏭 Gewerbe</span>`:''}
         </div>
         <div class="kunde-meta">
           <span>👤 ${k.berater}</span>
-          <span>📅 ${formatDatum(k.kaufdatum)}</span>
+          <span>📅 ${formatDatum(k.kaufdatum||k.erstkontaktDatum)}</span>
           ${k.lieferdatum&&!istGewerbe?`<span>🚚 Lieferung: ${formatDatum(k.lieferdatum)}</span>`:''}
         </div>
         ${!istGewerbe?`<div class="naechste-aktion"><strong>Schritt:</strong> ${schrittLabel(k.aktuellerSchritt)}${k.pfad==='B'?` · <span class="pfad-badge pfad-b">Pfad B</span>`:''}${k.nachbetreuungAktiv?` · <span style="background:rgba(184,134,11,0.22);color:#e0ad1a;border-radius:4px;font-size:10px;font-weight:700;padding:2px 7px;">🔄 Schleife aktiv</span>`:''}</div>`:''}
         ${k.kundeStufe&&k.kundeStufe!=='gekauft'&&!istGewerbe?`<div style="margin-top:5px;"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;background:rgba(80,100,160,0.18);color:#a0b0e0;">${KUNDEN_STUFEN.find(s=>s.id===k.kundeStufe)?.icon||''} ${KUNDEN_STUFEN.find(s=>s.id===k.kundeStufe)?.label||''}</span></div>`:''}
-        ${!istGewerbe?`<div class="produkt-chips">${allChips(k)}</div>`:''}
+        ${!istGewerbe&&k.kundeStufe==='gekauft'?`<div class="produkt-chips">${allChips(k)}</div>`:''}
         ${warnHtml}
       </div>
       <div class="kunde-right">
@@ -3163,15 +3241,17 @@ function openProfil(id){
   aktivesKundeId=id;
   const k=kundeById(id);if(!k)return;
   const istGewerbe = k.typ === 'gewerbe';
-  const isPaar = !istGewerbe && !!k.name2;
+  const isPaar = !istGewerbe && !!(vollName(k,2));
 
   // Header
+  const n1 = vollName(k,1);
+  const n2 = vollName(k,2);
   const titelName = istGewerbe
-    ? `${k.name1}${k.name2?' · '+k.name2:''}`
-    : `${k.name1}${k.name2?' & '+k.name2:''}`;
+    ? `${n1}${n2?' · '+n2:''}`
+    : `${k.anrede1?k.anrede1+' ':''}${n1}${n2?' & '+(k.anrede2?k.anrede2+' ':'')+n2:''}`;
   document.getElementById('profilName').textContent = titelName;
   document.getElementById('profilMeta').innerHTML =
-    `${k.berater} · ${formatDatum(k.kaufdatum)}`+
+    `${k.berater} · ${formatDatum(k.kaufdatum||k.erstkontaktDatum)}`+
     (!istGewerbe?(k.lieferdatum?` · Lieferung: ${formatDatum(k.lieferdatum)}`:'')+
     ` · <span class="pfad-badge ${k.pfad==='A'?'pfad-a':'pfad-b'}">Pfad ${k.pfad}</span>`+
     (isPaar?' · <span style="color:#c8c0ae">👫 Paar</span>':''):
@@ -3338,12 +3418,34 @@ function openBearbeiten(id) {
       <div class="section-label" style="margin-bottom:10px;">Stammdaten</div>
       <div class="form-grid" style="margin-bottom:14px;">
         <div class="form-row">
-          <label class="form-label">Name Person 1</label>
-          <input class="form-input" id="b-name1" value="${k.name1||''}" />
+          <label class="form-label">Anrede Person 1</label>
+          <select class="form-select" id="b-anrede1">
+            <option value="">– ohne –</option>
+            ${['Herr','Frau','Divers'].map(a=>`<option ${(k.anrede1||''===a)?'selected':''}>${a}</option>`).join('')}
+          </select>
         </div>
         <div class="form-row">
-          <label class="form-label">Name Person 2</label>
-          <input class="form-input" id="b-name2" value="${k.name2||''}" placeholder="leer lassen wenn Einzelperson" />
+          <label class="form-label">Vorname Person 1</label>
+          <input class="form-input" id="b-vorname1" value="${k.vorname1||k.name1?.split(' ')[0]||''}" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">Nachname Person 1</label>
+          <input class="form-input" id="b-nachname1" value="${k.nachname1||k.name1?.split(' ').slice(1).join(' ')||''}" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">Anrede Person 2</label>
+          <select class="form-select" id="b-anrede2">
+            <option value="">– ohne –</option>
+            ${['Herr','Frau','Divers'].map(a=>`<option ${(k.anrede2||''===a)?'selected':''}>${a}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Vorname Person 2</label>
+          <input class="form-input" id="b-vorname2" value="${k.vorname2||k.name2?.split(' ')[0]||''}" placeholder="leer lassen wenn Einzelperson" />
+        </div>
+        <div class="form-row">
+          <label class="form-label">Nachname Person 2</label>
+          <input class="form-input" id="b-nachname2" value="${k.nachname2||k.name2?.split(' ').slice(1).join(' ')||''}" />
         </div>
         <div class="form-row">
           <label class="form-label">Telefon Person 1</label>
@@ -3434,12 +3536,19 @@ async function bearbeitenSpeichern() {
     };
   }
 
-  const name2 = document.getElementById('b-name2').value.trim();
+  const anrede1 = document.getElementById('b-anrede1')?.value||'';
+  const vorname1 = document.getElementById('b-vorname1')?.value.trim()||'';
+  const nachname1 = document.getElementById('b-nachname1')?.value.trim()||'';
+  const anrede2 = document.getElementById('b-anrede2')?.value||'';
+  const vorname2 = document.getElementById('b-vorname2')?.value.trim()||'';
+  const nachname2 = document.getElementById('b-nachname2')?.value.trim()||'';
+  const name1 = [vorname1,nachname1].filter(Boolean).join(' ') || k.name1;
+  const name2 = [vorname2,nachname2].filter(Boolean).join(' ');
 
   await kundeUpdate(aktivesKundeId, kunde => ({
     ...kunde,
-    name1: document.getElementById('b-name1').value.trim() || kunde.name1,
-    name2: name2,
+    anrede1, vorname1, nachname1, name1,
+    anrede2: name2?anrede2:'', vorname2, nachname2, name2,
     tel1: document.getElementById('b-tel1').value.trim(),
     tel2: document.getElementById('b-tel2').value.trim(),
     wa1: document.getElementById('b-wa1').value,
@@ -3579,8 +3688,8 @@ function openSchnelleintrag(id) {
       <label class="form-label">Von / Wer</label>
       <select class="form-select" id="se-vonwem">
         <option value="">– automatisch –</option>
-        <option value="${k.name1.split(' ')[0]}">${k.name1.split(' ')[0]} (Kunde)</option>
-        ${k.name2?`<option value="${k.name2.split(' ')[0]}">${k.name2.split(' ')[0]} (Kunde)</option>`:''}
+        <option value="${vollName(k,1).split(' ')[0]}">${vollName(k,1).split(' ')[0]} (Kunde)</option>
+        ${vollName(k,2)?`<option value="${vollName(k,2).split(' ')[0]}">${vollName(k,2).split(' ')[0]} (Kunde)</option>`:''}
         ${['Franz-Josef','Viktor','Elias','Samuel'].map(b=>`<option value="${b}">${b}</option>`).join('')}
       </select>
     </div>
@@ -3615,7 +3724,7 @@ async function schnellEintragSpeichern(id) {
   const richtung = document.querySelector('input[name="se-richtung"]:checked')?.value || 'ausgehend';
   const k = kundeById(id);
   const vonWemSel = document.getElementById('se-vonwem')?.value;
-  const vonWem = vonWemSel || (richtung === 'eingehend' ? k?.name1.split(' ')[0] : 'Keiten');
+  const vonWem = vonWemSel || (richtung === 'eingehend' ? vollName(k,1).split(' ')[0] : 'Keiten');
 
   const eintrag = {
     typ: document.getElementById('se-kanal')?.options[document.getElementById('se-kanal').selectedIndex]?.text || 'Notiz',
@@ -4074,13 +4183,23 @@ function zeigeNkFormular(typ) {
 
 async function kundeAnlegen(typ='privat') {
   if(typ === 'privat') {
-    const name1 = document.getElementById('nk-name1').value.trim();
-    const kaufdatum = document.getElementById('nk-kaufdatum').value;
-    if(!name1 || !kaufdatum) { alert('Bitte Name und Erstkontakt-Datum ausfüllen.'); return; }
+    const vorname1 = document.getElementById('nk-vorname1')?.value.trim() || '';
+    const nachname1 = document.getElementById('nk-nachname1')?.value.trim() || '';
+    const anrede1 = document.getElementById('nk-anrede1')?.value || '';
+    const vorname2 = document.getElementById('nk-vorname2')?.value.trim() || '';
+    const nachname2 = document.getElementById('nk-nachname2')?.value.trim() || '';
+    const anrede2 = document.getElementById('nk-anrede2')?.value || '';
+    const kaufdatum = document.getElementById('nk-kaufdatum')?.value;
+
+    if(!vorname1 && !nachname1) { alert('Bitte mindestens Vorname oder Nachname ausfüllen.'); return; }
+
+    const name1 = [vorname1, nachname1].filter(Boolean).join(' ');
+    const name2 = [vorname2, nachname2].filter(Boolean).join(' ');
 
     const neuerKunde = {
       id: genId(), typ: 'privat',
-      name1, name2: document.getElementById('nk-name2').value.trim(),
+      anrede1, vorname1, nachname1, name1,
+      anrede2: name2 ? anrede2 : '', vorname2, nachname2, name2,
       tel1: document.getElementById('nk-tel1').value.trim(),
       tel2: document.getElementById('nk-tel2').value.trim(),
       wa1: document.getElementById('nk-wa1').value,
@@ -4103,7 +4222,9 @@ async function kundeAnlegen(typ='privat') {
     await speichereKundeFirestore(neuerKunde);
 
     // Felder leeren
-    ['nk-name1','nk-name2','nk-tel1','nk-tel2','nk-notiz'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+    ['nk-vorname1','nk-nachname1','nk-vorname2','nk-nachname2','nk-tel1','nk-tel2','nk-notiz'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+    document.getElementById('nk-anrede1').value='';
+    document.getElementById('nk-anrede2').value='';
 
   } else {
     const firma = document.getElementById('nk-firma').value.trim();
