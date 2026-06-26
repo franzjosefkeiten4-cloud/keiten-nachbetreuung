@@ -569,7 +569,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <div class="form-row">
             <label class="form-label">Name Person 2 (optional)</label>
-            <input class="form-input" id="nk-name2" placeholder="z. B. Sandra Meier" oninput="togglePerson2(this.value)" />
+            <input class="form-input" id="nk-name2" placeholder="z. B. Sandra Meier" />
           </div>
           <div class="form-row">
             <label class="form-label">Telefon Person 1</label>
@@ -599,15 +599,15 @@ document.addEventListener('DOMContentLoaded', () => {
             </select>
           </div>
           <div class="form-row">
-            <label class="form-label">Erstkontakt-Datum</label>
+            <label class="form-label">Datum der Kontaktaufnahme</label>
             <input class="form-input" type="date" id="nk-kaufdatum" />
           </div>
         </div>
         <div class="form-row" style="margin-top:8px;">
           <label class="form-label">Erste Notiz (optional)</label>
-          <textarea class="form-textarea" id="nk-notiz" placeholder="Erstkontakt, Anfrage, Vorqualifizierung ..."></textarea>
+          <textarea class="form-textarea" id="nk-notiz" placeholder="Wie hat der Kunde Kontakt aufgenommen? Was war der erste Eindruck?"></textarea>
         </div>
-        <div class="hint" style="margin-bottom:12px;">💡 Produkte, Schlafmotive und Beratungsdetails werden nach dem Gespräch im Kundenprofil erfasst.</div>
+        <div class="hint" style="margin-bottom:12px;">💡 Kaufdatum, Produkte und Beratungsdetails werden nach dem Kauf im Kundenprofil erfasst.</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn btn-primary" onclick="kundeAnlegen('privat')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
@@ -1172,6 +1172,13 @@ function switchTab(idx) {
 // PROZESS & LEITFÄDEN
 // ============================================================
 
+const KUNDEN_STUFEN = [
+  {id:'interessent',    label:'Interessent',      icon:'👋', farbe:'#b8b09e'},
+  {id:'vorqualifiziert',label:'Vorqualifiziert',  icon:'✅', farbe:'#a0b0e0'},
+  {id:'beraten',        label:'Beraten',          icon:'🧭', farbe:'#e0ad1a'},
+  {id:'gekauft',        label:'Gekauft',          icon:'🛒', farbe:'#9ed04e'},
+];
+
 const PROZESS_SCHRITTE = [
   {id:'erstanruf',label:'Erstanruf',tage:42},
   {id:'nb1',label:'Nachbetreuung 1',tage:56},
@@ -1184,6 +1191,19 @@ const PROZESS_SCHRITTE = [
 ];
 
 const LEITFAEDEN = {
+  vorqualifizierung:{
+    titel:'Vorqualifizierung – Erster Eindruck gewinnen',
+    intro:'Ziel ist nicht Verkauf, sondern Verstehen. Offene Fragen stellen, zuhören, notieren. Das hier ist die Basis für alles was danach kommt.',
+    fragen:[
+      'Wie sind Sie auf uns aufmerksam geworden?',
+      'Was hat Sie dazu bewogen, sich zu melden – gibt es einen konkreten Anlass?',
+      'Schlafen Sie allein oder mit einem Partner zusammen?',
+      'Haben Sie aktuell Beschwerden – Rücken, Schulter, Hüfte, Nacken – oder geht es eher um die Schlafqualität allgemein?',
+      'Was haben Sie im Moment für eine Matratze, und wie alt ist die ungefähr?',
+      'Was ist Ihnen bei einem neuen Schlafsystem besonders wichtig?',
+      'Haben Sie schon einen konkreten Zeitrahmen im Kopf, oder schauen Sie sich erst einmal um?',
+    ]
+  },
   erstanruf:{titel:'Erstanruf – 6 Wochen nach Lieferung',intro:'Locker anfangen, keine Checklisten-Atmosphäre. Der Kunde soll merken: Hier ruft jemand an, weil er es ernst meint.',fragen:['Guten Tag, hier ist [Name] von Keiten Schlafberatung – wie haben Sie die erste Zeit mit dem neuen Schlafsystem erlebt?','Haben Sie sich schon ein bisschen eingelebt, oder braucht es noch ein paar Tage zum Gewöhnen?','Gibt es etwas, das Ihnen aufgefallen ist – sei es positiv oder was Sie beschäftigt?','Wie fühlt sich die Unterlage morgens an – eher gut, oder gibt es Stellen, die noch nicht ganz stimmen?','Haben Sie schon das Gefühl, besser zu schlafen, oder ist das noch zu früh zum Einschätzen?']},
   erstanruf_nachbedarf:{titel:'Erstanruf – Nachbedarf erkannt',intro:'Ruhe bewahren, nicht sofort in Lösungen springen. Erst wirklich zuhören, dann einordnen.',fragen:['Das höre ich gerne, dass Sie das offen sagen – erzählen Sie mir mehr, was Sie beschäftigt.','Liegt das Gefühl eher am Schultergürtel, an der Hüfte, oder ist das schwer zu sagen?','Haben Sie die Eingewöhnungszeit schon abgewartet, oder haben Sie das Gefühl, das ist kein normales Eingewöhnen?','Gibt es einen Moment im Schlaf, wo es besser wird – nach dem Umdrehen, in der Seite, auf dem Rücken?','Was wäre für Sie eine spürbare Verbesserung? Was würde sich dann anders anfühlen?']},
   nb1:{titel:'Nachbetreuung 1 – Erste Rückmeldung nach Eingewöhnung',intro:'Die meisten Kunden brauchen 3–5 Wochen, bis sie wirklich spüren, was das neue System mit ihnen macht.',fragen:['Wie ist die Eingewöhnungsphase für Sie verlaufen – haben Sie sich mittlerweile zurechtgefunden?','Haben Sie schon einen Unterschied gemerkt in der Tiefe des Schlafs oder beim Aufwachen?','Gibt es Bereiche, die noch nicht ganz stimmen – oder fühlt sich alles stimmig an?','Wir haben beim Kauf [Matratze] empfohlen – macht die das, wofür sie gedacht war?','Wenn Sie Ihren Schlaf auf einer Skala von 1 bis 10 einordnen würden – wo stehen Sie jetzt, wo standen Sie vorher?']},
@@ -2661,6 +2681,304 @@ function auftraegeProfilHtml(kundeId) {
 }
 
 // ============================================================
+// KUNDENSTUFEN & VORQUALIFIZIERUNG
+// ============================================================
+
+function kundeStufeHtml(k) {
+  const stufen = KUNDEN_STUFEN;
+  const aktIdx = stufen.findIndex(s => s.id === (k.kundeStufe || 'interessent'));
+
+  return `<div style="display:flex;gap:0;margin-bottom:18px;overflow-x:auto;padding-bottom:4px;">
+    ${stufen.map((s, i) => {
+      const done = i < aktIdx;
+      const aktiv = i === aktIdx;
+      return `<div style="flex:1;min-width:80px;display:flex;flex-direction:column;align-items:center;position:relative;">
+        ${i < stufen.length-1 ? `<div style="position:absolute;top:13px;left:50%;width:100%;height:2px;background:${done?s.farbe:'rgba(245,241,230,0.12)'};z-index:0;"></div>` : ''}
+        <div style="width:26px;height:26px;border-radius:50%;border:2px solid ${aktiv?s.farbe:done?s.farbe:'rgba(245,241,230,0.15)'};background:${aktiv||done?s.farbe:'var(--bg)'};display:flex;align-items:center;justify-content:center;font-size:11px;z-index:1;position:relative;${aktiv?'box-shadow:0 0 0 4px '+s.farbe+'30;':''}">
+          ${done?'✓':(aktiv?s.icon:(i+1))}
+        </div>
+        <div style="font-size:9px;color:${aktiv?'#F5F1E6':'var(--text-muted)'};text-align:center;margin-top:5px;font-weight:${aktiv?'600':'400'};">${s.label}</div>
+      </div>`;
+    }).join('')}
+  </div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+    ${k.kundeStufe !== 'vorqualifiziert' && k.kundeStufe !== 'beraten' && k.kundeStufe !== 'gekauft'
+      ? `<button class="btn btn-ghost btn-sm" style="border-color:rgba(160,176,224,0.4);color:#a0b0e0;" onclick="openVorqualifizierung('${k.id}')">✅ Vorqualifizierung erfassen</button>` : ''}
+    ${k.kundeStufe === 'vorqualifiziert' || k.kundeStufe === 'beraten'
+      ? `<button class="btn btn-ghost btn-sm" style="border-color:rgba(160,176,224,0.4);color:#a0b0e0;" onclick="openVorqualifizierung('${k.id}')">✅ Vorqualifizierung bearbeiten</button>` : ''}
+    ${k.kundeStufe !== 'gekauft'
+      ? `<button class="btn btn-ghost btn-sm" style="border-color:rgba(158,208,78,0.4);color:#9ed04e;" onclick="openKaufErfassen('${k.id}')">🛒 Kauf erfassen</button>` : ''}
+    ${k.kundeStufe === 'gekauft' && !k.lieferdatum
+      ? `<button class="btn btn-ghost btn-sm" style="border-color:rgba(158,208,78,0.4);color:#9ed04e;" onclick="openLieferdatumErfassen('${k.id}')">🚚 Lieferdatum eintragen</button>` : ''}
+  </div>`;
+}
+
+function vorqualifizierungHtml(k) {
+  const v = k.vorqualifizierung || {};
+  if(!v.datum && !v.anlass && !v.herkunft) return '';
+  return `<div style="background:rgba(80,100,160,0.10);border:1px solid rgba(80,100,160,0.25);border-radius:var(--radius);padding:14px;margin-bottom:16px;">
+    <div style="font-size:12px;font-weight:600;color:#a0b0e0;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">
+      ✅ Vorqualifizierung ${v.datum?'· '+formatDatum(v.datum):''}
+      <button class="btn btn-ghost btn-xs" onclick="openVorqualifizierung('${k.id}')">Bearbeiten</button>
+    </div>
+    ${v.herkunft?`<div style="margin-bottom:6px;"><span class="produkt-item-label">Herkunft</span><div style="font-size:13px;color:#ddd8cc;">${v.herkunft}</div></div>`:''}
+    ${v.anlass?`<div style="margin-bottom:6px;"><span class="produkt-item-label">Anlass</span><div style="font-size:13px;color:#ddd8cc;">${v.anlass}</div></div>`:''}
+    ${v.partner!==undefined?`<div style="margin-bottom:6px;"><span class="produkt-item-label">Schläft</span><div style="font-size:13px;color:#ddd8cc;">${v.partner?'Mit Partner':'Allein'}</div></div>`:''}
+    ${v.beschwerden?`<div style="margin-bottom:6px;"><span class="produkt-item-label">Beschwerden</span><div style="font-size:13px;color:#ddd8cc;">${v.beschwerden}</div></div>`:''}
+    ${v.aktuellesSystem?`<div style="margin-bottom:6px;"><span class="produkt-item-label">Aktuelles System</span><div style="font-size:13px;color:#ddd8cc;">${v.aktuellesSystem}</div></div>`:''}
+    ${v.budget?`<div style="margin-bottom:6px;"><span class="produkt-item-label">Budget</span><div style="font-size:13px;color:#ddd8cc;">${v.budget}</div></div>`:''}
+    ${v.terminVereinbart?`<div><span class="produkt-item-label">Termin</span><div style="font-size:13px;color:#9ed04e;">${v.terminVereinbart}</div></div>`:''}
+    ${v.notiz?`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:12px;color:#b8b09e;">${v.notiz}</div>`:''}
+  </div>`;
+}
+
+function openVorqualifizierung(id) {
+  aktivesKundeId = id;
+  const k = kundeById(id); if(!k) return;
+  const v = k.vorqualifizierung || {};
+  document.getElementById('profilOverlay').classList.remove('open');
+
+  // Modal befüllen – wir nutzen das Beratungs-Overlay wieder
+  document.getElementById('beratungSubtitle').textContent = `Vorqualifizierung · ${k.name1}`;
+  document.getElementById('beratungBody').innerHTML = `
+    <div style="max-height:65vh;overflow-y:auto;padding-right:4px;">
+      <div style="background:rgba(80,100,160,0.10);border:1px solid rgba(80,100,160,0.2);border-radius:8px;padding:12px;margin-bottom:16px;">
+        <div class="leitfaden-intro" style="margin:0;">${LEITFAEDEN.vorqualifizierung.intro}</div>
+        <ul class="leitfaden-fragen" style="margin-top:10px;">
+          ${LEITFAEDEN.vorqualifizierung.fragen.map(f=>`<li>${f}</li>`).join('')}
+        </ul>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Datum</label>
+        <input class="form-input" type="date" id="vq-datum" value="${v.datum||new Date().toISOString().slice(0,10)}" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">Wie hat der Kunde von uns erfahren?</label>
+        <select class="form-select" id="vq-herkunft">
+          <option value="">– bitte wählen –</option>
+          ${['Empfehlung','Google / Internet','Laufkundschaft','Bestandskunde','Messe / Veranstaltung','Social Media','Sonstiges'].map(h=>`<option ${v.herkunft===h?'selected':''}>${h}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Anlass / Auslöser</label>
+        <textarea class="form-textarea" id="vq-anlass" placeholder="Was hat den Kunden dazu bewogen, sich zu melden?">${v.anlass||''}</textarea>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Schläft</label>
+        <div class="radio-group">
+          <div class="radio-opt"><input type="radio" name="vq-partner" id="vq-allein" value="allein" ${!v.partner?'checked':''}><label for="vq-allein">Allein</label></div>
+          <div class="radio-opt"><input type="radio" name="vq-partner" id="vq-partner" value="partner" ${v.partner?'checked':''}><label for="vq-partner">Mit Partner</label></div>
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Akute Beschwerden</label>
+        <input class="form-input" id="vq-beschwerden" placeholder="z. B. Rücken, Schulter, schlechtes Einschlafen ..." value="${v.beschwerden||''}" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">Aktuelles Schlafsystem</label>
+        <input class="form-input" id="vq-system" placeholder="z. B. Federkernmatratze 12 Jahre alt, IKEA-Lattenrost ..." value="${v.aktuellesSystem||''}" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">Budget-Indikation</label>
+        <select class="form-select" id="vq-budget">
+          <option value="">– offen / nicht besprochen –</option>
+          ${['Unter 1.000 €','1.000 – 2.500 €','2.500 – 5.000 €','Über 5.000 €'].map(b=>`<option ${v.budget===b?'selected':''}>${b}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Termin vereinbart</label>
+        <input class="form-input" id="vq-termin" placeholder="z. B. Mi. 15.07. um 14 Uhr, oder: Rückruf nächste Woche" value="${v.terminVereinbart||''}" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">Weitere Notizen</label>
+        <textarea class="form-textarea" id="vq-notiz" placeholder="Erster Eindruck, Besonderheiten ...">${v.notiz||''}</textarea>
+      </div>
+    </div>`;
+
+  document.getElementById('beratungFooter').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeOverlay('beratungOverlay');openProfil('${id}')">Abbrechen</button>
+    <button class="btn btn-primary" onclick="vorqualifizierungSpeichern('${id}')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+      Speichern
+    </button>`;
+  document.getElementById('beratungOverlay').classList.add('open');
+}
+
+async function vorqualifizierungSpeichern(id) {
+  const partner = document.querySelector('input[name="vq-partner"]:checked')?.value === 'partner';
+  await kundeUpdate(id, k => ({
+    ...k,
+    kundeStufe: 'vorqualifiziert',
+    aktuellerSchritt: 'vorqualifiziert',
+    vorqualifizierung: {
+      datum: document.getElementById('vq-datum').value,
+      herkunft: document.getElementById('vq-herkunft').value,
+      anlass: document.getElementById('vq-anlass').value.trim(),
+      partner,
+      beschwerden: document.getElementById('vq-beschwerden').value.trim(),
+      aktuellesSystem: document.getElementById('vq-system').value.trim(),
+      budget: document.getElementById('vq-budget').value,
+      terminVereinbart: document.getElementById('vq-termin').value.trim(),
+      notiz: document.getElementById('vq-notiz').value.trim(),
+    }
+  }));
+  closeOverlay('beratungOverlay');
+  openProfil(id);
+  renderKundenliste();
+}
+
+function openKaufErfassen(id) {
+  aktivesKundeId = id;
+  const k = kundeById(id); if(!k) return;
+  document.getElementById('profilOverlay').classList.remove('open');
+  document.getElementById('beratungSubtitel')?.remove();
+
+  document.getElementById('beratungSubtitle').textContent = `Kauf erfassen · ${k.name1}`;
+  document.getElementById('beratungBody').innerHTML = `
+    <div style="background:rgba(158,208,78,0.10);border:1px solid rgba(158,208,78,0.25);border-radius:8px;padding:12px;margin-bottom:16px;">
+      <div style="font-size:13px;color:#9ed04e;font-weight:600;margin-bottom:4px;">🛒 Kauf bestätigen</div>
+      <div style="font-size:12px;color:#b8b09e;">Mit dem Kaufdatum startet der 6-Wochen-Erstanruf-Countdown nach der Lieferung.</div>
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label class="form-label">Kaufdatum</label>
+        <input class="form-input" type="date" id="kf-kaufdatum" value="${new Date().toISOString().slice(0,10)}" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">Lieferdatum (falls bekannt)</label>
+        <input class="form-input" type="date" id="kf-lieferdatum" />
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <div class="section-label" style="margin-bottom:10px;">Schlafsystem Person 1</div>
+    <div class="produkt-sektion" id="kf-felder-p1"></div>
+
+    ${k.name2 ? `<div class="section-label" style="margin:10px 0;">Schlafsystem ${k.name2.split(' ')[0]}</div>
+    <div class="produkt-sektion" id="kf-felder-p2"></div>` : ''}`;
+
+  // Produkt-Felder rendern
+  renderProduktFelderInDiv('kf-felder-p1', 'kf1');
+  if(k.name2) renderProduktFelderInDiv('kf-felder-p2', 'kf2');
+
+  document.getElementById('beratungFooter').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeOverlay('beratungOverlay');openProfil('${id}')">Abbrechen</button>
+    <button class="btn btn-primary" onclick="kaufSpeichern('${id}', ${!!k.name2})">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+      Kauf speichern
+    </button>`;
+  document.getElementById('beratungOverlay').classList.add('open');
+}
+
+function renderProduktFelderInDiv(containerId, prefix) {
+  const container = document.getElementById(containerId);
+  if(!container) return;
+  container.innerHTML = FELDER_REIHENFOLGE.map(feld => {
+    const s = STAMM[feld];
+    const selId = `${prefix}-${feld}`;
+    let opts = `<option value="">– keine / unbekannt –</option>`;
+    s.gruppen.forEach(g => {
+      opts += `<optgroup label="${g.label}">`;
+      g.items.forEach(i => opts += `<option value="${i}">${i}</option>`);
+      opts += `</optgroup>`;
+    });
+    if(EIGENE[feld]?.length) {
+      opts += `<optgroup label="Eigene Einträge">`;
+      EIGENE[feld].forEach(i => opts += `<option value="${i}">${i}</option>`);
+      opts += `</optgroup>`;
+    }
+    return `<div class="produkt-zeile" style="margin-bottom:10px;">
+      <div style="flex:1">
+        <label class="form-label">${s.icon} ${s.label}</label>
+        <select class="form-select" id="${selId}">${opts}</select>
+      </div>
+      <div class="quelle-toggle">
+        <button class="quelle-btn active-keiten" onclick="setQuelleKf('${prefix}','${feld}','keiten',this)">Keiten</button>
+        <button class="quelle-btn" onclick="setQuelleKf('${prefix}','${feld}','fremd',this)">Fremd</button>
+      </div>
+    </div>`;
+  }).join('') +
+  `<div style="margin-top:4px;">
+    <div class="form-label" style="margin-bottom:8px;">📐 Liegefläche</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div>
+        <label class="form-label">Breite</label>
+        <select class="form-select" id="${prefix}-breite">
+          <option value="">–</option>
+          ${['80','90','100','120','140','160','180','200'].map(v=>`<option value="${v}" ${v==='90'?'selected':''}>${v} cm</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Länge</label>
+        <select class="form-select" id="${prefix}-laenge">
+          <option value="">–</option>
+          ${['200','210','220'].map(v=>`<option value="${v}" ${v==='200'?'selected':''}>${v} cm</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:9px 12px;background:rgba(245,241,230,0.05);border:1px solid var(--border);border-radius:7px;">
+      <input type="checkbox" id="${prefix}-partnermatratze" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;" />
+      <span style="font-size:13px;color:#ddd8cc;">Partnermatratze</span>
+    </label>
+  </div>`;
+}
+
+const kfQuellenState = {};
+function setQuelleKf(prefix, feld, wert, btn) {
+  if(!kfQuellenState[prefix]) kfQuellenState[prefix] = {};
+  kfQuellenState[prefix][feld] = wert;
+  btn.closest('.quelle-toggle').querySelectorAll('.quelle-btn').forEach(b=>b.className='quelle-btn');
+  btn.className = `quelle-btn active-${wert}`;
+}
+
+function leseProdukteFuerKauf(prefix) {
+  const q = kfQuellenState[prefix] || {};
+  return {
+    ...Object.fromEntries(FELDER_REIHENFOLGE.map(f=>[f,{
+      name: document.getElementById(`${prefix}-${f}`)?.value||'',
+      quelle: q[f]||'keiten'
+    }])),
+    breite: document.getElementById(`${prefix}-breite`)?.value||'',
+    laenge: document.getElementById(`${prefix}-laenge`)?.value||'',
+    partnermatratze: document.getElementById(`${prefix}-partnermatratze`)?.checked||false,
+  };
+}
+
+async function kaufSpeichern(id, hatPerson2) {
+  const kaufdatum = document.getElementById('kf-kaufdatum').value;
+  const lieferdatum = document.getElementById('kf-lieferdatum').value;
+  if(!kaufdatum) { alert('Bitte Kaufdatum eintragen.'); return; }
+
+  await kundeUpdate(id, k => ({
+    ...k,
+    kaufdatum, lieferdatum,
+    kundeStufe: 'gekauft',
+    aktuellerSchritt: 'erstanruf',
+    naechsterKontakt: lieferdatum ? dateNaechster(42, lieferdatum) : dateAdd(42),
+    person1: leseProdukteFuerKauf('kf1'),
+    person2: hatPerson2 ? leseProdukteFuerKauf('kf2') : null,
+  }));
+  closeOverlay('beratungOverlay');
+  openProfil(id);
+  renderKundenliste();
+}
+
+async function openLieferdatumErfassen(id) {
+  const datum = prompt('Lieferdatum eingeben (TT.MM.JJJJ):');
+  if(!datum) return;
+  const parts = datum.split('.');
+  if(parts.length !== 3) { alert('Bitte im Format TT.MM.JJJJ eingeben.'); return; }
+  const iso = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+  await kundeUpdate(id, k => ({
+    ...k, lieferdatum: iso,
+    naechsterKontakt: dateNaechster(42, iso)
+  }));
+  openProfil(id);
+  renderKundenliste();
+}
+
+// ============================================================
 // WA-FLAG
 // ============================================================
 
@@ -2828,7 +3146,9 @@ function openProfil(id){
 
   } else {
     // ---- PRIVAT PROFIL ----
-    const tHtml=`<div class="prozess-timeline">${PROZESS_SCHRITTE.slice(0,-1).map((s,i)=>{const idx=PROZESS_SCHRITTE.findIndex(x=>x.id===k.aktuellerSchritt);return`<div class="timeline-step ${i<idx?'done':''} ${i===idx?'active':''}"><div class="step-circle">${i<idx?'✓':i+1}</div><div class="step-label">${s.label}</div></div>`;}).join('')}</div>`;
+    const tHtml = k.kundeStufe === 'gekauft'
+      ? `<div class="prozess-timeline">${PROZESS_SCHRITTE.slice(0,-1).map((s,i)=>{const idx=PROZESS_SCHRITTE.findIndex(x=>x.id===k.aktuellerSchritt);return`<div class="timeline-step ${i<idx?'done':''} ${i===idx?'active':''}"><div class="step-circle">${i<idx?'✓':i+1}</div><div class="step-label">${s.label}</div></div>`;}).join('')}</div>`
+      : kundeStufeHtml(k);
 
     const ea=erstanrufStatus(k);
     let eaHtml='';
@@ -2838,24 +3158,30 @@ function openProfil(id){
     const liegeInfo=(p)=>{if(!p)return'';const masse=(p.breite||p.laenge)?`📏 ${p.breite?p.breite+' cm':'?'} × ${p.laenge?p.laenge+' cm':'?'}`:'';const partner=p.partnermatratze?'<span class="chip" style="background:rgba(80,100,160,0.18);border-color:rgba(80,100,160,0.35);color:#a0b0e0;display:inline-block;margin-top:4px;">Partnermatratze</span>':'';if(!masse&&!partner)return'';return`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">${masse?`<div class="produkt-item-label">📐 Liegefläche</div><div class="produkt-item-wert">${masse}</div>`:''}${partner}</div>`;};
 
     let produktHtml='';
-    if(isPaar){
-      const rb=(produkte,titel)=>`<div class="person-block"><div class="person-block-title">${titel}</div>${pFelder.map(f=>{const p=(produkte||{})[f.key]||{};const eigenQ=p.name&&EIGENE[f.key]&&EIGENE[f.key].includes(p.name)?'eigen':p.quelle;return`<div class="produkt-item-label">${f.icon} ${f.label}</div><div class="produkt-item-wert">${p.name||'–'}</div>${p.name?`<span class="chip ${eigenQ}" style="margin-bottom:7px;display:inline-block">${eigenQ==='eigen'?'Eigener Eintrag':eigenQ==='keiten'?'Keiten':'Fremd'}</span>`:''}`}).join('')}${liegeInfo(produkte)}</div>`;
-      produktHtml=`<div class="paar-produkt-grid">${rb(k.person1,`🛏 ${k.name1.split(' ')[0]}`)}${rb(k.person2,`🛏 ${k.name2.split(' ')[0]}`)}</div>`;
-    } else if(k.person1) {
-      produktHtml=`<div style="background:rgba(245,241,230,0.04);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:18px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">${pFelder.map(f=>{const p=(k.person1||{})[f.key]||{};const eigenQ=p.name&&EIGENE[f.key]&&EIGENE[f.key].includes(p.name)?'eigen':p.quelle;return`<div><div class="produkt-item-label">${f.icon} ${f.label}</div><div class="produkt-item-wert">${p.name||'–'}</div>${p.name?`<span class="chip ${eigenQ}" style="display:inline-block">${eigenQ==='eigen'?'Eigener Eintrag':eigenQ==='keiten'?'Keiten':'Fremd'}</span>`:''}</div>`}).join('')}<div style="grid-column:1/-1">${liegeInfo(k.person1)}</div></div>`;
+    if(k.kundeStufe === 'gekauft') {
+      if(isPaar){
+        const rb=(produkte,titel)=>`<div class="person-block"><div class="person-block-title">${titel}</div>${pFelder.map(f=>{const p=(produkte||{})[f.key]||{};const eigenQ=p.name&&EIGENE[f.key]&&EIGENE[f.key].includes(p.name)?'eigen':p.quelle;return`<div class="produkt-item-label">${f.icon} ${f.label}</div><div class="produkt-item-wert">${p.name||'–'}</div>${p.name?`<span class="chip ${eigenQ}" style="margin-bottom:7px;display:inline-block">${eigenQ==='eigen'?'Eigener Eintrag':eigenQ==='keiten'?'Keiten':'Fremd'}</span>`:''}`}).join('')}${liegeInfo(produkte)}</div>`;
+        produktHtml=`<div class="paar-produkt-grid">${rb(k.person1,`🛏 ${k.name1.split(' ')[0]}`)}${rb(k.person2,`🛏 ${k.name2.split(' ')[0]}`)}</div>`;
+      } else if(k.person1) {
+        produktHtml=`<div style="background:rgba(245,241,230,0.04);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:18px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">${pFelder.map(f=>{const p=(k.person1||{})[f.key]||{};const eigenQ=p.name&&EIGENE[f.key]&&EIGENE[f.key].includes(p.name)?'eigen':p.quelle;return`<div><div class="produkt-item-label">${f.icon} ${f.label}</div><div class="produkt-item-wert">${p.name||'–'}</div>${p.name?`<span class="chip ${eigenQ}" style="display:inline-block">${eigenQ==='eigen'?'Eigener Eintrag':eigenQ==='keiten'?'Keiten':'Fremd'}</span>`:''}</div>`}).join('')}<div style="grid-column:1/-1">${liegeInfo(k.person1)}</div></div>`;
+      }
     }
 
-    let lfKey=k.aktuellerSchritt;
+    // Vorqualifizierung anzeigen (wenn vorhanden)
+    const vqHtml = vorqualifizierungHtml(k);
+
+    // Leitfaden: Vorqualifizierung wenn Interessent, sonst Nachbetreuungs-Leitfaden
+    let lfKey = k.kundeStufe === 'interessent' || k.kundeStufe === 'vorqualifiziert' ? 'vorqualifizierung' : k.aktuellerSchritt;
     if(lfKey==='erstanruf'&&k.pfad==='B')lfKey='erstanruf_nachbedarf';
     const lf=LEITFAEDEN[lfKey];
-    const lfHtml=lf?`<div class="leitfaden-box"><div class="leitfaden-title">💬 ${lf.titel}</div><div class="leitfaden-intro">${lf.intro}</div><ul class="leitfaden-fragen">${lf.fragen.map(f=>`<li>${f}</li>`).join('')}</ul></div>`:'';
-    const beratungHtml=beratungProfilHtml(k);
+    const lfHtml=lf&&k.kundeStufe==='gekauft'?`<div class="leitfaden-box"><div class="leitfaden-title">💬 ${lf.titel}</div><div class="leitfaden-intro">${lf.intro}</div><ul class="leitfaden-fragen">${lf.fragen.map(f=>`<li>${f}</li>`).join('')}</ul></div>`:'';
+    const beratungHtml = k.kundeStufe==='gekauft' ? beratungProfilHtml(k) : '';
     const waHtml=k.aktuellerSchritt==='empfehlung'?`<div class="wa-box"><div class="wa-title">📱 WhatsApp-Empfehlung senden</div><p style="font-size:13px;color:#b8b09e;margin-bottom:12px;">Der Kunde ist bereit.</p><button class="btn btn-wa btn-sm" onclick="openWA('${k.id}')">WhatsApp öffnen</button></div>`:'';
     const verlaufHtml=(k.kontakte&&k.kontakte.length)?`<div class="kontaktverlauf"><div class="section-label">Kontaktverlauf (${k.kontakte.length})</div>${k.kontakte.slice().reverse().map(e=>`<div class="kontakt-eintrag"><div class="kontakt-header"><span class="kontakt-typ">${e.typ}</span><span class="kontakt-datum">${formatDatum(e.datum)}</span></div><div class="kontakt-notiz">${e.notiz||'–'}</div></div>`).join('')}</div>`:`<p style="color:var(--text-muted);font-size:13px;margin-bottom:14px;">Noch kein Kontakt erfasst.</p>`;
     const offeneAufgaben=aufgabenProKunde(k.id);
     const aufgabenHtml=`<div class="divider"></div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;"><div class="section-label" style="margin:0;">Offene Aufgaben (${offeneAufgaben.length})</div><button class="btn btn-ghost btn-xs" onclick="openAufgabeNeu('${k.id}')">+ Aufgabe</button></div>${offeneAufgaben.length?offeneAufgaben.map(a=>aufgabeCardHtml(a,true)).join(''):'<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Keine offenen Aufgaben.</p>'}`;
 
-    bodyHtml = tHtml+eaHtml+produktHtml+beratungHtml+lfHtml+waHtml+'<div class="divider"></div>'+verlaufHtml+aufgabenHtml+auftraegeProfilHtml(k.id);
+    bodyHtml = tHtml+eaHtml+vqHtml+produktHtml+beratungHtml+lfHtml+waHtml+'<div class="divider"></div>'+verlaufHtml+aufgabenHtml+auftraegeProfilHtml(k.id);
   }
 
   document.getElementById('profilBody').innerHTML = bodyHtml;
@@ -2867,7 +3193,7 @@ function openProfil(id){
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       Bearbeiten
     </button>
-    ${k.status!=='abgeschlossen'&&!istGewerbe?`<button class="btn btn-primary" onclick="openGespraech('${k.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>Gespräch erfassen</button>`:''}`;
+    ${k.status!=='abgeschlossen'&&!istGewerbe&&k.kundeStufe==='gekauft'?`<button class="btn btn-primary" onclick="openGespraech('${k.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>Gespräch erfassen</button>`:''}`;
   document.getElementById('profilOverlay').classList.add('open');
 }
 
@@ -3414,13 +3740,15 @@ async function kundeAnlegen(typ='privat') {
       wa1: document.getElementById('nk-wa1').value,
       wa2: document.getElementById('nk-wa2').value,
       berater: document.getElementById('nk-berater').value,
-      kaufdatum, lieferdatum: '',
-      person1: {matratze:{name:'',quelle:'keiten'},lattenrost:{name:'',quelle:'keiten'},kissen:{name:'',quelle:'keiten'},bett:{name:'',quelle:'keiten'},breite:'90',laenge:'200',partnermatratze:false},
-      person2: null,
-      pfad:'A', status:'aktiv', aktuellerSchritt:'erstanruf', ampel:'gelb',
+      erstkontaktDatum: kaufdatum,
+      kaufdatum: '', lieferdatum: '',
+      kundeStufe: 'interessent',
+      person1: null, person2: null,
+      pfad:'A', status:'aktiv', aktuellerSchritt:'interessent', ampel:'gelb',
       kontakte: [],
-      naechsterKontakt: dateAdd(42),
+      naechsterKontakt: '',
       beratung: {},
+      vorqualifizierung: {},
     };
     const notiz = document.getElementById('nk-notiz').value.trim();
     if(notiz) neuerKunde.kontakte.push({typ:'Erstkontakt',datum:kaufdatum,ergebnis:'notiz',notiz});
@@ -3559,6 +3887,9 @@ Object.assign(window, {
   openBeratung, beratungSpeichern, waehleMotiv, waehleMotivSek,
   angebotPositionHinzufuegen, angebotPositionEntfernen, angebotStatusAendern,
   angebotPositionLoeschen,
+  openVorqualifizierung, vorqualifizierungSpeichern,
+  openKaufErfassen, kaufSpeichern, openLieferdatumErfassen,
+  setQuelleKf,
   renderAuftraege, openAuftragNeu, openAuftragDetail, openAuftragBearbeiten,
   auftragSpeichern, toggleAuftragTyp, waehleAnzahlung, updateAnzahlungBerechnung,
   auftragPositionHinzufuegen, auftragPositionEntfernen,
