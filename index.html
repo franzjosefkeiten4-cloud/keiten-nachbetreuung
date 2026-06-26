@@ -321,6 +321,63 @@ document.addEventListener('DOMContentLoaded', () => {
     .beschwerde-grid { grid-template-columns: 1fr; }
   }
 
+  /* BERATUNGSERFASSUNG */
+  .beratung-box {
+    background: rgba(139,95,50,0.10);
+    border: 1px solid rgba(139,95,50,0.28);
+    border-radius: var(--radius);
+    padding: 16px; margin-bottom: 18px;
+  }
+  .beratung-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 15px; font-weight: 600;
+    color: var(--holz-light); margin-bottom: 10px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .motiv-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 6px; margin-bottom: 10px;
+  }
+  .motiv-chip {
+    display: flex; align-items: center; gap: 7px;
+    padding: 7px 10px; border-radius: 7px;
+    background: rgba(245,241,230,0.05);
+    border: 1px solid var(--border);
+    font-size: 12px; color: #ddd8cc;
+    cursor: pointer; transition: all 0.2s; user-select: none;
+  }
+  .motiv-chip.primary-selected {
+    background: rgba(139,95,50,0.25);
+    border-color: rgba(139,95,50,0.5);
+    color: var(--holz-light); font-weight: 600;
+  }
+  .motiv-chip.secondary-selected {
+    background: rgba(123,131,50,0.15);
+    border-color: rgba(123,131,50,0.35);
+    color: var(--accent-light);
+  }
+  .motiv-chip-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    border: 1.5px solid currentColor; transition: all 0.2s;
+  }
+  .motiv-chip.primary-selected .motiv-chip-dot { background: currentColor; }
+  .motiv-chip.secondary-selected .motiv-chip-dot { background: currentColor; }
+
+  .angebot-position {
+    background: rgba(245,241,230,0.04);
+    border: 1px solid var(--border);
+    border-radius: 7px; padding: 10px 12px; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .angebot-position-name { flex: 1; font-size: 13px; color: #F5F1E6; }
+  .angebot-position-status {
+    font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 500;
+  }
+  .status-besprochen { background: rgba(245,241,230,0.1); color: var(--text-muted); }
+  .status-angeboten { background: rgba(123,131,50,0.18); color: var(--accent-light); }
+  .status-bestellt { background: rgba(90,122,42,0.28); color: #9ed04e; }
+  .status-abgesagt { background: rgba(180,60,40,0.2); color: #f08070; }
+
   /* AUFGABEN */
   .aufgabe-card {
     background: rgba(245,241,230,0.06);
@@ -598,6 +655,21 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>
   </div>
 </main>
+
+<!-- MODAL: BERATUNGSERFASSUNG -->
+<div class="overlay" id="beratungOverlay" onclick="overlayClick(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Beratungserfassung</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" id="beratungSubtitle">–</div>
+      </div>
+      <button class="modal-close" onclick="closeOverlay('beratungOverlay')">✕</button>
+    </div>
+    <div class="modal-body" id="beratungBody"></div>
+    <div class="modal-footer" id="beratungFooter"></div>
+  </div>
+</div>
 
 <!-- MODAL: AUFGABE -->
 <div class="overlay" id="aufgabeOverlay" onclick="overlayClick(event)">
@@ -1580,6 +1652,253 @@ function aufgabenProKunde(kundeId) {
 }
 
 // ============================================================
+// BERATUNGSERFASSUNG
+// ============================================================
+
+const KAUFMOTIVE = [
+  { id:'schmerz_schulter',   icon:'🦴', label:'Schulter-Schmerz' },
+  { id:'schmerz_ruecken',    icon:'🦴', label:'Rücken-Schmerz' },
+  { id:'schmerz_hueft',      icon:'🦴', label:'Hüft-Schmerz' },
+  { id:'schmerz_nacken',     icon:'🦴', label:'Nacken-Schmerz' },
+  { id:'durchschlafen',      icon:'🌙', label:'Durchschlafen' },
+  { id:'einschlafen',        icon:'😴', label:'Einschlafen' },
+  { id:'erholt_aufwachen',   icon:'☀️', label:'Erholt aufwachen' },
+  { id:'nachjustierung',     icon:'🔧', label:'Nachjustierbarkeit' },
+  { id:'langlebigkeit',      icon:'⏳', label:'Langlebigkeit' },
+  { id:'nachhaltigkeit',     icon:'🌿', label:'Nachhaltigkeit' },
+  { id:'temperatur',         icon:'🌡️', label:'Temperatur / Schwitzen' },
+  { id:'partner',            icon:'👫', label:'Partnerkompatibilität' },
+  { id:'allergie',           icon:'🌸', label:'Allergie / Hygiene' },
+  { id:'leistung',           icon:'⚡', label:'Tagsüber leistungsfähig' },
+  { id:'lebensereignis',     icon:'🔄', label:'Lebensveränderung' },
+  { id:'sonstiges',          icon:'💬', label:'Sonstiges' },
+];
+
+const ANGEBOT_STATUS = ['besprochen','angeboten','bestellt','abgesagt'];
+
+// Beratungserfassung im Profil anzeigen
+function beratungProfilHtml(k) {
+  const b = k.beratung || {};
+  const primMotiv = KAUFMOTIVE.find(m => m.id === b.primMotiv);
+  const sek = (b.sekMotiv || []).map(id => KAUFMOTIVE.find(m => m.id === id)).filter(Boolean);
+  const positionen = b.positionen || [];
+
+  if(!b.primMotiv && !b.wuensche && !positionen.length) {
+    return `<div class="beratung-box">
+      <div class="beratung-title">
+        🧭 Beratungserfassung
+        <button class="btn btn-ghost btn-xs" onclick="openBeratung('${k.id}')">Erfassen</button>
+      </div>
+      <p style="font-size:13px;color:var(--text-muted);">Noch keine Beratungsdaten erfasst.</p>
+    </div>`;
+  }
+
+  return `<div class="beratung-box">
+    <div class="beratung-title">
+      🧭 Beratungserfassung
+      <button class="btn btn-ghost btn-xs" onclick="openBeratung('${k.id}')">Bearbeiten</button>
+    </div>
+
+    ${primMotiv ? `<div style="margin-bottom:10px;">
+      <div class="produkt-item-label">Primäres Kaufmotiv</div>
+      <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(139,95,50,0.2);border:1px solid rgba(139,95,50,0.4);border-radius:6px;padding:5px 10px;font-size:13px;color:var(--holz-light);font-weight:600;">
+        ${primMotiv.icon} ${primMotiv.label}
+      </div>
+    </div>` : ''}
+
+    ${sek.length ? `<div style="margin-bottom:10px;">
+      <div class="produkt-item-label">Weitere Themen</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;">
+        ${sek.map(m => `<span class="chip" style="background:rgba(123,131,50,0.12);border-color:rgba(123,131,50,0.25);color:#b0be50;">${m.icon} ${m.label}</span>`).join('')}
+      </div>
+    </div>` : ''}
+
+    ${b.wuensche ? `<div style="margin-bottom:10px;">
+      <div class="produkt-item-label">Kundenwünsche & Notizen</div>
+      <div style="font-size:13px;color:#ddd8cc;line-height:1.5;">${b.wuensche}</div>
+    </div>` : ''}
+
+    ${positionen.length ? `<div>
+      <div class="produkt-item-label">Angebot / Vorgeschlagene Produkte</div>
+      ${positionen.map(p => `<div class="angebot-position">
+        <div class="angebot-position-name">${p.name}</div>
+        ${p.preis ? `<div style="font-size:12px;color:var(--text-muted);">€ ${p.preis}</div>` : ''}
+        <span class="angebot-position-status status-${p.status}">${p.status}</span>
+        <button class="btn btn-ghost btn-xs" style="color:#f08070;" onclick="angebotPositionLoeschen('${k.id}','${p.id}')">✕</button>
+      </div>`).join('')}
+    </div>` : ''}
+  </div>`;
+}
+
+// Beratungs-Modal öffnen
+function openBeratung(id) {
+  aktivesKundeId = id;
+  const k = kundeById(id); if(!k) return;
+  const b = k.beratung || {};
+
+  document.getElementById('beratungSubtitle').textContent = `${k.name1}${k.name2?' & '+k.name2:''}`;
+
+  // Motivauswahl State
+  window._primMotiv = b.primMotiv || '';
+  window._sekMotiv = new Set(b.sekMotiv || []);
+
+  document.getElementById('beratungBody').innerHTML = `
+    <div style="max-height:68vh;overflow-y:auto;padding-right:4px;">
+      <div class="form-row">
+        <div class="form-label" style="margin-bottom:8px;">Primäres Kaufmotiv <span style="color:var(--text-muted);font-weight:400;">(eines wählen – der Hauptauslöser)</span></div>
+        <div class="motiv-grid" id="motivGridPrimary">
+          ${KAUFMOTIVE.map(m => `
+            <div class="motiv-chip ${b.primMotiv===m.id?'primary-selected':''}" id="prim-${m.id}" onclick="waehleMotiv('${m.id}')">
+              <div class="motiv-chip-dot"></div>
+              <span>${m.icon} ${m.label}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-label" style="margin-bottom:8px;">Weitere Themen <span style="color:var(--text-muted);font-weight:400;">(Mehrfachauswahl)</span></div>
+        <div class="motiv-grid" id="motivGridSecondary">
+          ${KAUFMOTIVE.map(m => `
+            <div class="motiv-chip ${(b.sekMotiv||[]).includes(m.id)?'secondary-selected':''}" id="sek-${m.id}" onclick="waehleMotivSek('${m.id}')">
+              <div class="motiv-chip-dot"></div>
+              <span>${m.icon} ${m.label}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Kundenwünsche & Notizen aus dem Beratungsgespräch</label>
+        <textarea class="form-textarea" id="b-wuensche" placeholder="Was war dem Kunden besonders wichtig? Besondere Körpermerkmale, Vorlieben, Erwartungen ...">${b.wuensche||''}</textarea>
+      </div>
+
+      <div class="divider"></div>
+      <div class="section-label" style="margin-bottom:10px;">Angebot / Vorgeschlagene Produkte</div>
+
+      <div id="angebotPositionenListe">
+        ${(b.positionen||[]).map(p => angebotPositionFormHtml(p)).join('')}
+      </div>
+
+      <div style="background:rgba(245,241,230,0.04);border:1px solid var(--border);border-radius:8px;padding:12px;margin-top:6px;">
+        <div class="form-label" style="margin-bottom:8px;">Neue Position hinzufügen</div>
+        <div class="form-grid" style="gap:8px;">
+          <div><input class="form-input" id="ap-name" placeholder="Produkt / Bezeichnung" /></div>
+          <div><input class="form-input" id="ap-preis" placeholder="Preis (optional)" type="number" min="0" step="0.01" /></div>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+          ${ANGEBOT_STATUS.map(s => `
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:#ddd8cc;">
+              <input type="radio" name="ap-status" value="${s}" ${s==='besprochen'?'checked':''} style="accent-color:var(--accent);"> ${s}
+            </label>`).join('')}
+        </div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="angebotPositionHinzufuegen()">+ Hinzufügen</button>
+      </div>
+    </div>`;
+
+  document.getElementById('beratungFooter').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeOverlay('beratungOverlay')">Abbrechen</button>
+    <button class="btn btn-primary" onclick="beratungSpeichern()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+      Speichern
+    </button>`;
+
+  document.getElementById('beratungOverlay').classList.add('open');
+}
+
+function angebotPositionFormHtml(p) {
+  return `<div class="angebot-position" id="ap-row-${p.id}">
+    <div class="angebot-position-name">${p.name}</div>
+    ${p.preis?`<div style="font-size:12px;color:var(--text-muted);">€ ${p.preis}</div>`:''}
+    <select class="form-select" style="width:130px;padding:4px 8px;font-size:12px;" onchange="angebotStatusAendern('${p.id}',this.value)">
+      ${ANGEBOT_STATUS.map(s=>`<option value="${s}" ${p.status===s?'selected':''}>${s}</option>`).join('')}
+    </select>
+    <button class="btn btn-ghost btn-xs" style="color:#f08070;" onclick="angebotPositionEntfernen('${p.id}')">✕</button>
+  </div>`;
+}
+
+// Temporäre Positions-Liste während Bearbeitung
+let _tempPositionen = [];
+
+function openBeratung_init() { _tempPositionen = []; }
+
+function angebotPositionHinzufuegen() {
+  const name = document.getElementById('ap-name').value.trim();
+  if(!name) return;
+  const preis = document.getElementById('ap-preis').value;
+  const status = document.querySelector('input[name="ap-status"]:checked')?.value || 'besprochen';
+  const pos = { id: genId(), name, preis: preis||'', status };
+  _tempPositionen.push(pos);
+  const liste = document.getElementById('angebotPositionenListe');
+  if(liste) liste.insertAdjacentHTML('beforeend', angebotPositionFormHtml(pos));
+  document.getElementById('ap-name').value = '';
+  document.getElementById('ap-preis').value = '';
+}
+
+function angebotPositionEntfernen(posId) {
+  _tempPositionen = _tempPositionen.filter(p => p.id !== posId);
+  const el = document.getElementById(`ap-row-${posId}`);
+  if(el) el.remove();
+}
+
+function angebotStatusAendern(posId, wert) {
+  const p = _tempPositionen.find(x => x.id === posId);
+  if(p) p.status = wert;
+}
+
+function waehleMotiv(id) {
+  window._primMotiv = window._primMotiv === id ? '' : id;
+  document.querySelectorAll('#motivGridPrimary .motiv-chip').forEach(el => el.classList.remove('primary-selected'));
+  if(window._primMotiv) document.getElementById(`prim-${window._primMotiv}`)?.classList.add('primary-selected');
+}
+
+function waehleMotivSek(id) {
+  if(window._sekMotiv.has(id)) window._sekMotiv.delete(id);
+  else window._sekMotiv.add(id);
+  const el = document.getElementById(`sek-${id}`);
+  if(el) el.classList.toggle('secondary-selected', window._sekMotiv.has(id));
+}
+
+async function beratungSpeichern() {
+  const k = kundeById(aktivesKundeId); if(!k) return;
+
+  // Bestehende Positionen aus DOM + neue aus _tempPositionen zusammenführen
+  const bestehendeIds = new Set(_tempPositionen.map(p => p.id));
+  const altePositionen = (k.beratung?.positionen || []).filter(p => !bestehendeIds.has(p.id));
+
+  // Status-Änderungen aus DOM lesen
+  const allePositionen = [...(k.beratung?.positionen||[]).map(p => {
+    const sel = document.querySelector(`#ap-row-${p.id} select`);
+    return sel ? {...p, status: sel.value} : p;
+  }), ..._tempPositionen].filter(p => {
+    const row = document.getElementById(`ap-row-${p.id}`);
+    return row !== null || _tempPositionen.find(x => x.id === p.id);
+  });
+
+  await kundeUpdate(aktivesKundeId, kunde => ({
+    ...kunde,
+    beratung: {
+      primMotiv: window._primMotiv || '',
+      sekMotiv: [...window._sekMotiv],
+      wuensche: document.getElementById('b-wuensche').value.trim(),
+      positionen: allePositionen,
+    }
+  }));
+
+  closeOverlay('beratungOverlay');
+  openProfil(aktivesKundeId);
+}
+
+async function angebotPositionLoeschen(kundeId, posId) {
+  await kundeUpdate(kundeId, k => ({
+    ...k,
+    beratung: {
+      ...(k.beratung||{}),
+      positionen: (k.beratung?.positionen||[]).filter(p => p.id !== posId)
+    }
+  }));
+  openProfil(kundeId);
+}
+
+// ============================================================
 // WA-FLAG
 // ============================================================
 
@@ -1748,6 +2067,8 @@ function openProfil(id){
   const lf=LEITFAEDEN[lfKey];
   const lfHtml=lf?`<div class="leitfaden-box"><div class="leitfaden-title">💬 ${lf.titel}</div><div class="leitfaden-intro">${lf.intro}</div><ul class="leitfaden-fragen">${lf.fragen.map(f=>`<li>${f}</li>`).join('')}</ul></div>`:'';
 
+  // Beratungserfassung
+  const beratungHtml = beratungProfilHtml(k);
   const waHtml=k.aktuellerSchritt==='empfehlung'?`<div class="wa-box"><div class="wa-title">📱 WhatsApp-Empfehlung senden</div><p style="font-size:13px;color:#b8b09e;margin-bottom:12px;">Der Kunde ist bereit. Jetzt ist der richtige Moment.</p><button class="btn btn-wa btn-sm" onclick="openWA('${k.id}')">WhatsApp öffnen</button></div>`:'';
 
   const verlaufHtml=(k.kontakte&&k.kontakte.length)?`<div class="kontaktverlauf"><div class="section-label">Kontaktverlauf (${k.kontakte.length})</div>${k.kontakte.slice().reverse().map(e=>`<div class="kontakt-eintrag"><div class="kontakt-header"><span class="kontakt-typ">${e.typ}</span><span class="kontakt-datum">${formatDatum(e.datum)}</span></div><div class="kontakt-notiz">${e.notiz||'–'}</div></div>`).join('')}</div>`:`<p style="color:var(--text-muted);font-size:13px;margin-bottom:14px;">Noch kein Kontakt erfasst.</p>`;
@@ -1763,7 +2084,7 @@ function openProfil(id){
       ? offeneAufgaben.map(a => aufgabeCardHtml(a, true)).join('')
       : `<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Keine offenen Aufgaben.</p>`}`;
 
-  document.getElementById('profilBody').innerHTML=tHtml+eaHtml+produktHtml+lfHtml+waHtml+'<div class="divider"></div>'+verlaufHtml+aufgabenHtml;
+  document.getElementById('profilBody').innerHTML=tHtml+eaHtml+produktHtml+beratungHtml+lfHtml+waHtml+'<div class="divider"></div>'+verlaufHtml+aufgabenHtml;
   document.getElementById('profilFooter').innerHTML=`
     <button class="btn btn-ghost" onclick="closeOverlay('profilOverlay')">Schließen</button>
     ${k.status!=='abgeschlossen'?`
@@ -2433,6 +2754,9 @@ Object.assign(window, {
   addEintragFromField, verwaltungHinzufuegen, loescheEintrag,
   renderAufgaben, openAufgabeNeu, openAufgabeBearbeiten,
   aufgabeSpeichern, aufgabeErledigen, aufgabeLoeschen, toggleKundenbezug,
+  openBeratung, beratungSpeichern, waehleMotiv, waehleMotivSek,
+  angebotPositionHinzufuegen, angebotPositionEntfernen, angebotStatusAendern,
+  angebotPositionLoeschen,
   renderSchlafCheckTab, toggleScBox, setSkala,
   startFirebaseListener: window.startFirebaseListener,
   faelligeKunden, renderErinnerungBanner, renderHeute,
