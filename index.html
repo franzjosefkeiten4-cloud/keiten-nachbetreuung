@@ -23,10 +23,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const KUNDEN_COL = collection(db, 'kunden');
+const AUFGABEN_COL = collection(db, 'aufgaben');
 
 // Globale Firebase-Funktionen die vom restlichen Code genutzt werden
 window._db = db;
 window._kundenCol = KUNDEN_COL;
+window._aufgabenCol = AUFGABEN_COL;
 window._setDoc = setDoc;
 window._doc = doc;
 window._deleteDoc = deleteDoc;
@@ -318,7 +320,48 @@ document.addEventListener('DOMContentLoaded', () => {
   @media (max-width: 560px) {
     .beschwerde-grid { grid-template-columns: 1fr; }
   }
-</style>
+
+  /* AUFGABEN */
+  .aufgabe-card {
+    background: rgba(245,241,230,0.06);
+    border: 1px solid rgba(245,241,230,0.13);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    transition: all 0.2s;
+  }
+  .aufgabe-card:hover { background: rgba(245,241,230,0.10); }
+  .aufgabe-card.erledigt { opacity: 0.45; }
+  .aufgabe-card.prio-dringend { border-left: 3px solid #f08070; }
+  .aufgabe-card.prio-hoch { border-left: 3px solid #e0ad1a; }
+  .aufgabe-card.prio-normal { border-left: 3px solid var(--accent); }
+  .aufgabe-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+  .aufgabe-titel { font-size: 14px; font-weight: 600; color: #F5F1E6; }
+  .aufgabe-meta { font-size: 12px; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .aufgabe-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .prio-badge {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .prio-badge.dringend { background: rgba(180,60,40,0.25); color: #f08070; }
+  .prio-badge.hoch { background: rgba(184,134,11,0.22); color: #e0ad1a; }
+  .prio-badge.normal { background: rgba(123,131,50,0.2); color: #9ed04e; }
+  .typ-badge {
+    display: inline-block; font-size: 10px; padding: 2px 7px;
+    border-radius: 4px; background: rgba(245,241,230,0.08);
+    border: 1px solid var(--border); color: var(--text-muted);
+  }
+  .aufgaben-filter-bar {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; align-items: center;
+  }
+  .aufgaben-filter-bar select, .aufgaben-filter-bar input {
+    flex: 1; min-width: 130px; max-width: 200px;
+  }
+  .aufgaben-sektion-title {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-muted); font-weight: 600; margin: 18px 0 8px;
+    display: flex; align-items: center; gap: 8px;
+  }</style>
 </head>
 <body>
 
@@ -338,6 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
 <nav>
   <button class="nav-btn active" onclick="showView('kundenliste')">Kundenliste</button>
   <button class="nav-btn" onclick="showView('heute')">Heute <span id="heuteBadgeNav" style="display:none;background:var(--holz);color:#F5F1E6;border-radius:20px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:4px;"></span></button>
+  <button class="nav-btn" onclick="showView('aufgaben')">Aufgaben <span id="aufgabenBadgeNav" style="display:none;background:rgba(180,60,40,0.7);color:#F5F1E6;border-radius:20px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:4px;"></span></button>
   <button class="nav-btn" onclick="showView('neukunde')">+ Neuer Kunde</button>
   <button class="nav-btn" onclick="showView('uebersicht')">Übersicht</button>
   <button class="nav-btn" onclick="showView('schlafchecks')">Schlaf-Checks</button>
@@ -467,6 +511,39 @@ document.addEventListener('DOMContentLoaded', () => {
     <div class="kunden-grid" id="uebersichtGrid"></div>
   </div>
 
+  <!-- AUFGABEN -->
+  <div class="view" id="view-aufgaben">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Aufgaben</div>
+        <div class="page-subtitle">Offene Punkte für das gesamte Team</div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="openAufgabeNeu()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Neue Aufgabe
+      </button>
+    </div>
+    <div class="aufgaben-filter-bar">
+      <select class="form-select" id="af-person" onchange="renderAufgaben()">
+        <option value="">Alle Personen</option>
+        <option>Franz-Josef</option><option>Viktor</option><option>Elias</option><option>Samuel</option>
+      </select>
+      <select class="form-select" id="af-typ" onchange="renderAufgaben()">
+        <option value="">Alle Typen</option>
+        <option>Nachbetreuung</option><option>Werkstatt</option><option>Büro</option><option>Sonstiges</option>
+      </select>
+      <select class="form-select" id="af-status" onchange="renderAufgaben()">
+        <option value="offen_inarbeit">Offen & In Arbeit</option>
+        <option value="">Alle Status</option>
+        <option value="offen">Offen</option>
+        <option value="in_arbeit">In Arbeit</option>
+        <option value="erledigt">Erledigt</option>
+      </select>
+      <input class="form-input" id="af-suche" placeholder="Suchen ..." oninput="renderAufgaben()" style="flex:1;min-width:150px;max-width:240px;" />
+    </div>
+    <div id="aufgabenListe"></div>
+  </div>
+
   <!-- SCHLAF-CHECKS -->
   <div class="view" id="view-schlafchecks">
     <div class="page-header">
@@ -521,6 +598,20 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>
   </div>
 </main>
+
+<!-- MODAL: AUFGABE -->
+<div class="overlay" id="aufgabeOverlay" onclick="overlayClick(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="aufgabeModalTitel">Neue Aufgabe</div>
+      </div>
+      <button class="modal-close" onclick="closeOverlay('aufgabeOverlay')">✕</button>
+    </div>
+    <div class="modal-body" id="aufgabeBody"></div>
+    <div class="modal-footer" id="aufgabeFooter"></div>
+  </div>
+</div>
 
 <!-- MODAL: BEARBEITEN -->
 <div class="overlay" id="bearbeitenOverlay" onclick="overlayClick(event)">
@@ -985,39 +1076,61 @@ function zeigeOfflineHinweis() {
 
 window.startFirebaseListener = function() {
   zeigeLoading(true);
+  let kundenGeladen = false;
+  let aufgabenGeladen = false;
+  function pruefeInit() {
+    if(kundenGeladen && aufgabenGeladen) {
+      zeigeLoading(false);
+      renderErinnerungBanner();
+      renderKundenliste();
+      updateNavBadge();
+      updateAufgabenBadge();
+    }
+  }
   try {
     _firestoreListener = window._onSnapshot(
       window._kundenCol,
       (snapshot) => {
-        zeigeLoading(false);
         if(snapshot.empty && KUNDEN.length === 0) {
-          // Erste Nutzung: Demo-Daten in Firestore laden
           ladeDemodatenNachFirestore();
-          return;
+          kundenGeladen = true; pruefeInit(); return;
         }
         KUNDEN = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
-        // Alle aktiven Views neu rendern
+        kundenGeladen = true; pruefeInit();
         if(document.getElementById('view-kundenliste').classList.contains('active')) {
           renderErinnerungBanner(); renderKundenliste();
         }
         if(document.getElementById('view-heute').classList.contains('active')) renderHeute();
         if(document.getElementById('view-uebersicht').classList.contains('active')) renderUebersicht();
+        if(document.getElementById('view-schlafchecks').classList.contains('active')) renderSchlafCheckTab();
         updateNavBadge();
       },
       (error) => {
-        console.error('Firestore Fehler:', error);
-        zeigeLoading(false);
+        console.error('Firestore Kunden Fehler:', error);
         zeigeOfflineHinweis();
-        // Fallback: localStorage
         const raw = localStorage.getItem('keiten_kunden_v3');
         if(raw) { try { KUNDEN = JSON.parse(raw); } catch(e) {} }
         else KUNDEN = JSON.parse(JSON.stringify(DEMO_KUNDEN));
-        renderErinnerungBanner(); renderKundenliste(); updateNavBadge();
+        kundenGeladen = true; pruefeInit();
+      }
+    );
+    window._onSnapshot(
+      window._aufgabenCol,
+      (snapshot) => {
+        AUFGABEN = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+        aufgabenGeladen = true; pruefeInit();
+        if(document.getElementById('view-aufgaben').classList.contains('active')) renderAufgaben();
+        if(document.getElementById('view-heute').classList.contains('active')) renderHeute();
+        updateAufgabenBadge();
+      },
+      (error) => {
+        console.error('Firestore Aufgaben Fehler:', error);
+        AUFGABEN = JSON.parse(localStorage.getItem('keiten_aufgaben_v1') || '[]');
+        aufgabenGeladen = true; pruefeInit();
       }
     );
   } catch(e) {
-    zeigeLoading(false);
-    zeigeOfflineHinweis();
+    zeigeLoading(false); zeigeOfflineHinweis();
   }
 };
 
@@ -1058,19 +1171,57 @@ function updateNavBadge() {
   else navBadge.style.display='none';
 }
 
-// ============================================================
-// VIEWS
-// ============================================================
+// Aufgaben Storage
+let AUFGABEN = JSON.parse(localStorage.getItem('keiten_aufgaben_v1') || '[]');
+
+async function speichereAufgabeFirestore(aufgabe) {
+  const {id, ...data} = aufgabe;
+  try { await window._setDoc(window._doc(window._aufgabenCol, id), data); }
+  catch(e) { localStorage.setItem('keiten_aufgaben_v1', JSON.stringify(AUFGABEN)); }
+}
+
+async function loescheAufgabeFirestore(id) {
+  AUFGABEN = AUFGABEN.filter(a => a.id !== id);
+  try { await window._deleteDoc(window._doc(window._aufgabenCol, id)); }
+  catch(e) { localStorage.setItem('keiten_aufgaben_v1', JSON.stringify(AUFGABEN)); }
+}
+
+function aufgabeById(id) { return AUFGABEN.find(a => a.id === id); }
+
+function updateAufgabenBadge() {
+  const badge = document.getElementById('aufgabenBadgeNav');
+  if(!badge) return;
+  const offen = AUFGABEN.filter(a => a.status !== 'erledigt' && a.faellig && tageDiff(a.faellig) <= 0).length;
+  if(offen) { badge.textContent=offen; badge.style.display='inline'; }
+  else badge.style.display='none';
+}
+
+// Auto-Aufgabe aus Wiedervorlage anlegen
+async function legeWiedervorlageAufgabeAn(kundeId, kundeName, datum, titel) {
+  if(!datum) return;
+  const aufgabe = {
+    id: genId(), titel, typ: 'Nachbetreuung',
+    person: KUNDEN.find(k=>k.id===kundeId)?.berater || 'Franz-Josef',
+    kundeId, keinKundenbezug: false,
+    faellig: datum, prioritaet: 'hoch',
+    status: 'offen', notiz: `Automatisch aus Wiedervorlage: ${kundeName}`,
+    erstellt: new Date().toISOString().slice(0,10)
+  };
+  AUFGABEN.push(aufgabe);
+  await speichereAufgabeFirestore(aufgabe);
+  updateAufgabenBadge();
+}
 
 function showView(name){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
-  ['kundenliste','heute','neukunde','uebersicht','schlafchecks','archiv','eintraege'].forEach((n,i)=>{
+  ['kundenliste','heute','aufgaben','neukunde','uebersicht','schlafchecks','archiv','eintraege'].forEach((n,i)=>{
     if(n===name)document.querySelectorAll('.nav-btn')[i].classList.add('active');
   });
   if(name==='kundenliste'){renderErinnerungBanner();renderKundenliste();}
   if(name==='heute')renderHeute();
+  if(name==='aufgaben')renderAufgaben();
   if(name==='uebersicht')renderUebersicht();
   if(name==='schlafchecks')renderSchlafCheckTab();
   if(name==='archiv')renderArchiv();
@@ -1144,13 +1295,15 @@ function renderErinnerungBanner() {
 function renderHeute() {
   const box = document.getElementById('heuteInhalt');
   const faellig = faelligeKunden(7);
+  const faelligeAufgaben = AUFGABEN.filter(a => a.status !== 'erledigt' && a.faellig && tageDiff(a.faellig) <= 7)
+    .sort((a,b) => (a.faellig||'').localeCompare(b.faellig||''));
 
-  if(!faellig.length) {
-    box.innerHTML=`<div class="heute-leer"><div class="heute-leer-icon">✓</div>Keine fälligen Kontakte in den nächsten 7 Tagen.</div>`;
+  if(!faellig.length && !faelligeAufgaben.length) {
+    box.innerHTML=`<div class="heute-leer"><div class="heute-leer-icon">✓</div>Keine fälligen Kontakte oder Aufgaben in den nächsten 7 Tagen.</div>`;
     return;
   }
 
-  // Gruppieren nach Zeitraum
+  // Kundenkontakte gruppieren
   const gruppen = [
     { titel:'Überfällig', filter: e => e.prioritaet === 0 },
     { titel:'Heute', filter: e => e.prioritaet === 1 },
@@ -1158,13 +1311,13 @@ function renderHeute() {
     { titel:'Diese Woche', filter: e => e.prioritaet === 3 },
   ];
 
-  box.innerHTML = gruppen.map(g => {
+  const kontakteHtml = faellig.length ? gruppen.map(g => {
     const eintraege = faellig.filter(g.filter);
     if(!eintraege.length) return '';
     return `<div class="heute-section">
       <div class="heute-section-title">
         ${g.titel === 'Überfällig' ? '⚠️' : g.titel === 'Heute' ? '🔴' : g.titel === 'Morgen' ? '🟡' : '🟢'}
-        ${g.titel}
+        ${g.titel} · Kundenkontakte
         <span style="background:rgba(245,241,230,0.1);border-radius:20px;padding:1px 8px;font-size:10px;">${eintraege.length}</span>
       </div>
       <div class="kunden-grid">
@@ -1173,10 +1326,7 @@ function renderHeute() {
           return `<div class="kunde-card erinnerung-zeile-${cls}" onclick="openProfil('${k.id}')" style="border-left:3px solid ${cls==='ueberfaellig'||cls==='heute'?'#f08070':cls==='morgen'?'#e0ad1a':'#9ed04e'};">
             <div>
               <div class="kunde-name">${k.name1}${k.name2?' & '+k.name2:''}</div>
-              <div class="kunde-meta">
-                <span>👤 ${k.berater}</span>
-                <span>📅 ${formatDatum(k.naechsterKontakt)}</span>
-              </div>
+              <div class="kunde-meta"><span>👤 ${k.berater}</span><span>📅 ${formatDatum(k.naechsterKontakt)}</span></div>
               <div class="naechste-aktion"><strong>Schritt:</strong> ${schritt}</div>
               ${eaWarn?`<div class="erstanruf-warn" style="margin-top:6px;">⚠️ ${eaWarn}</div>`:''}
             </div>
@@ -1189,7 +1339,244 @@ function renderHeute() {
         }).join('')}
       </div>
     </div>`;
+  }).join('') : '';
+
+  // Fällige Aufgaben
+  const aufgabenHtml = faelligeAufgaben.length ? `
+    <div class="heute-section">
+      <div class="heute-section-title">
+        📋 Fällige Aufgaben
+        <span style="background:rgba(245,241,230,0.1);border-radius:20px;padding:1px 8px;font-size:10px;">${faelligeAufgaben.length}</span>
+        <button class="btn btn-ghost btn-xs" onclick="showView('aufgaben')" style="margin-left:auto;">Alle anzeigen</button>
+      </div>
+      ${faelligeAufgaben.map(a => aufgabeCardHtml(a)).join('')}
+    </div>` : '';
+
+  box.innerHTML = kontakteHtml + aufgabenHtml;
+}
+// ============================================================
+// AUFGABEN
+// ============================================================
+
+const AUFGABE_TYPEN = ['Nachbetreuung','Werkstatt','Büro','Sonstiges'];
+const AUFGABE_PRIORITAETEN = ['normal','hoch','dringend'];
+const AUFGABE_STATUS = ['offen','in_arbeit','erledigt'];
+
+function aufgabeKundeName(kundeId) {
+  if(!kundeId) return '';
+  const k = kundeById(kundeId);
+  return k ? `${k.name1}${k.name2?' & '+k.name2:''}` : '';
+}
+
+function renderAufgaben() {
+  const filterPerson = document.getElementById('af-person')?.value || '';
+  const filterTyp = document.getElementById('af-typ')?.value || '';
+  const filterStatus = document.getElementById('af-status')?.value || 'offen_inarbeit';
+  const suche = (document.getElementById('af-suche')?.value || '').toLowerCase();
+
+  let liste = [...AUFGABEN].sort((a,b) => {
+    const pOrd = {dringend:0,hoch:1,normal:2};
+    const pA = pOrd[a.prioritaet]??2, pB = pOrd[b.prioritaet]??2;
+    if(pA !== pB) return pA - pB;
+    return (a.faellig||'9999').localeCompare(b.faellig||'9999');
+  });
+
+  if(filterPerson) liste = liste.filter(a => a.person === filterPerson);
+  if(filterTyp) liste = liste.filter(a => a.typ === filterTyp);
+  if(filterStatus === 'offen_inarbeit') liste = liste.filter(a => a.status !== 'erledigt');
+  else if(filterStatus) liste = liste.filter(a => a.status === filterStatus);
+  if(suche) liste = liste.filter(a =>
+    `${a.titel} ${a.notiz} ${aufgabeKundeName(a.kundeId)} ${a.typ} ${a.person}`.toLowerCase().includes(suche)
+  );
+
+  const box = document.getElementById('aufgabenListe');
+  if(!liste.length) {
+    box.innerHTML=`<div class="empty-state"><div class="empty-state-icon">✓</div><div class="empty-state-title">Keine Aufgaben</div><div>Alles erledigt oder kein Treffer für diesen Filter.</div></div>`;
+    return;
+  }
+
+  // Gruppierung: Überfällig / Heute / Diese Woche / Später / Ohne Datum
+  const gruppen = [
+    { key:'ueberfaellig', titel:'⚠️ Überfällig', filter: a => a.faellig && tageDiff(a.faellig) < 0 && a.status!=='erledigt' },
+    { key:'heute', titel:'🔴 Heute', filter: a => a.faellig && tageDiff(a.faellig) === 0 && a.status!=='erledigt' },
+    { key:'woche', titel:'🟡 Diese Woche', filter: a => a.faellig && tageDiff(a.faellig) > 0 && tageDiff(a.faellig) <= 7 && a.status!=='erledigt' },
+    { key:'spaeter', titel:'🟢 Später', filter: a => (!a.faellig || tageDiff(a.faellig) > 7) && a.status!=='erledigt' },
+    { key:'erledigt', titel:'✓ Erledigt', filter: a => a.status === 'erledigt' },
+  ];
+
+  box.innerHTML = gruppen.map(g => {
+    const eintraege = liste.filter(g.filter);
+    if(!eintraege.length) return '';
+    return `<div>
+      <div class="aufgaben-sektion-title">${g.titel} <span style="background:rgba(245,241,230,0.1);border-radius:20px;padding:1px 8px;font-size:10px;">${eintraege.length}</span></div>
+      ${eintraege.map(a => aufgabeCardHtml(a)).join('')}
+    </div>`;
   }).join('');
+}
+
+function aufgabeCardHtml(a, kompakt=false) {
+  const kundeName = aufgabeKundeName(a.kundeId);
+  const faelligText = a.faellig ? formatDatum(a.faellig) : 'Kein Datum';
+  const diff = a.faellig ? tageDiff(a.faellig) : null;
+  const faelligColor = diff===null?'var(--text-muted)':diff<0?'#f08070':diff===0?'#e0ad1a':'#9ed04e';
+  return `<div class="aufgabe-card ${a.status==='erledigt'?'erledigt':''} prio-${a.prioritaet||'normal'}">
+    <div class="aufgabe-header">
+      <div style="flex:1">
+        <div class="aufgabe-titel">${a.titel}</div>
+        <div class="aufgabe-meta">
+          <span>👤 ${a.person||'–'}</span>
+          <span class="typ-badge">${a.typ||'Sonstiges'}</span>
+          <span class="prio-badge ${a.prioritaet||'normal'}">${a.prioritaet||'normal'}</span>
+          ${kundeName?`<span style="cursor:pointer;color:var(--accent-light);" onclick="openProfil('${a.kundeId}')">👥 ${kundeName}</span>`:''}
+          <span style="color:${faelligColor};">📅 ${faelligText}</span>
+        </div>
+        ${a.notiz?`<div style="font-size:12px;color:var(--text-muted);margin-top:5px;">${a.notiz}</div>`:''}
+      </div>
+      <div class="aufgabe-actions">
+        ${a.status!=='erledigt'
+          ? `<button class="btn btn-primary btn-xs" onclick="aufgabeErledigen('${a.id}')">✓</button>`
+          : ''}
+        <button class="btn btn-ghost btn-xs" onclick="openAufgabeBearbeiten('${a.id}')">✎</button>
+        <button class="btn btn-ghost btn-xs" style="color:#f08070;" onclick="aufgabeLoeschen('${a.id}')">✕</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function openAufgabeNeu(kundeId='', vorausgefuellt={}) {
+  document.getElementById('aufgabeModalTitel').textContent = 'Neue Aufgabe';
+  document.getElementById('aufgabeBody').innerHTML = aufgabeFormHtml(null, kundeId, vorausgefuellt);
+  document.getElementById('aufgabeFooter').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeOverlay('aufgabeOverlay')">Abbrechen</button>
+    <button class="btn btn-primary" onclick="aufgabeSpeichern(null)">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+      Speichern
+    </button>`;
+  document.getElementById('aufgabeOverlay').classList.add('open');
+  toggleKundenbezug();
+}
+
+function openAufgabeBearbeiten(id) {
+  const a = aufgabeById(id); if(!a) return;
+  document.getElementById('aufgabeModalTitel').textContent = 'Aufgabe bearbeiten';
+  document.getElementById('aufgabeBody').innerHTML = aufgabeFormHtml(a);
+  document.getElementById('aufgabeFooter').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeOverlay('aufgabeOverlay')">Abbrechen</button>
+    <button class="btn btn-primary" onclick="aufgabeSpeichern('${id}')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+      Speichern
+    </button>`;
+  document.getElementById('aufgabeOverlay').classList.add('open');
+  toggleKundenbezug();
+}
+
+function aufgabeFormHtml(a, defaultKundeId='', vorausgefuellt={}) {
+  const kunden = KUNDEN.filter(k=>k.status!=='abgeschlossen');
+  const selKunde = a?.kundeId || defaultKundeId || '';
+  const keinBezug = a ? a.keinKundenbezug : !defaultKundeId;
+  return `
+    <div class="form-row">
+      <label class="form-label">Titel</label>
+      <input class="form-input" id="af-titel" value="${a?.titel||vorausgefuellt.titel||''}" placeholder="Was ist zu tun?" />
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label class="form-label">Typ</label>
+        <select class="form-select" id="af-typ-f">
+          ${AUFGABE_TYPEN.map(t=>`<option ${(a?.typ||vorausgefuellt.typ||'Sonstiges')===t?'selected':''}>${t}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Zugewiesen an</label>
+        <select class="form-select" id="af-person-f">
+          ${['Franz-Josef','Viktor','Elias','Samuel'].map(p=>`<option ${(a?.person||vorausgefuellt.person||'Franz-Josef')===p?'selected':''}>${p}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Priorität</label>
+        <select class="form-select" id="af-prio-f">
+          ${AUFGABE_PRIORITAETEN.map(p=>`<option ${(a?.prioritaet||'normal')===p?'selected':''}>${p}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Status</label>
+        <select class="form-select" id="af-status-f">
+          ${AUFGABE_STATUS.map(s=>`<option value="${s}" ${(a?.status||'offen')===s?'selected':''}>${s==='in_arbeit'?'In Arbeit':s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Fällig am</label>
+        <input class="form-input" type="date" id="af-faellig" value="${a?.faellig||vorausgefuellt.faellig||''}" />
+      </div>
+    </div>
+    <div class="form-row">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#ddd8cc;">
+        <input type="checkbox" id="af-keinbezug" ${keinBezug?'checked':''} onchange="toggleKundenbezug()" style="accent-color:var(--accent);width:15px;height:15px;" />
+        Kein Kundenbezug (internes To-do)
+      </label>
+    </div>
+    <div class="form-row" id="af-kundenbezug-row">
+      <label class="form-label">Kunde (optional)</label>
+      <select class="form-select" id="af-kunde-f">
+        <option value="">– keinen Kunden wählen –</option>
+        ${kunden.map(k=>`<option value="${k.id}" ${selKunde===k.id?'selected':''}>${k.name1}${k.name2?' & '+k.name2:''}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Notiz</label>
+      <textarea class="form-textarea" id="af-notiz" placeholder="Hintergrundinformation, Ergebnis ...">${a?.notiz||vorausgefuellt.notiz||''}</textarea>
+    </div>`;
+}
+
+function toggleKundenbezug() {
+  const kein = document.getElementById('af-keinbezug')?.checked;
+  const row = document.getElementById('af-kundenbezug-row');
+  if(row) row.style.display = kein ? 'none' : 'block';
+}
+
+async function aufgabeSpeichern(id) {
+  const titel = document.getElementById('af-titel').value.trim();
+  if(!titel) { alert('Bitte einen Titel eingeben.'); return; }
+  const keinBezug = document.getElementById('af-keinbezug').checked;
+  const aufgabe = {
+    id: id || genId(),
+    titel,
+    typ: document.getElementById('af-typ-f').value,
+    person: document.getElementById('af-person-f').value,
+    prioritaet: document.getElementById('af-prio-f').value,
+    status: document.getElementById('af-status-f').value,
+    faellig: document.getElementById('af-faellig').value,
+    keinKundenbezug: keinBezug,
+    kundeId: keinBezug ? '' : (document.getElementById('af-kunde-f').value || ''),
+    notiz: document.getElementById('af-notiz').value.trim(),
+    erstellt: id ? (aufgabeById(id)?.erstellt || new Date().toISOString().slice(0,10)) : new Date().toISOString().slice(0,10),
+  };
+  if(id) AUFGABEN = AUFGABEN.map(a => a.id === id ? aufgabe : a);
+  else AUFGABEN.push(aufgabe);
+  await speichereAufgabeFirestore(aufgabe);
+  closeOverlay('aufgabeOverlay');
+  renderAufgaben();
+  updateAufgabenBadge();
+}
+
+async function aufgabeErledigen(id) {
+  const a = aufgabeById(id); if(!a) return;
+  const updated = {...a, status:'erledigt'};
+  AUFGABEN = AUFGABEN.map(x => x.id === id ? updated : x);
+  await speichereAufgabeFirestore(updated);
+  renderAufgaben();
+  updateAufgabenBadge();
+}
+
+async function aufgabeLoeschen(id) {
+  if(!confirm('Aufgabe wirklich löschen?')) return;
+  await loescheAufgabeFirestore(id);
+  renderAufgaben();
+  updateAufgabenBadge();
+}
+
+function aufgabenProKunde(kundeId) {
+  return AUFGABEN.filter(a => a.kundeId === kundeId && a.status !== 'erledigt');
 }
 
 // ============================================================
@@ -1365,7 +1752,18 @@ function openProfil(id){
 
   const verlaufHtml=(k.kontakte&&k.kontakte.length)?`<div class="kontaktverlauf"><div class="section-label">Kontaktverlauf (${k.kontakte.length})</div>${k.kontakte.slice().reverse().map(e=>`<div class="kontakt-eintrag"><div class="kontakt-header"><span class="kontakt-typ">${e.typ}</span><span class="kontakt-datum">${formatDatum(e.datum)}</span></div><div class="kontakt-notiz">${e.notiz||'–'}</div></div>`).join('')}</div>`:`<p style="color:var(--text-muted);font-size:13px;margin-bottom:14px;">Noch kein Kontakt erfasst.</p>`;
 
-  document.getElementById('profilBody').innerHTML=tHtml+eaHtml+produktHtml+lfHtml+waHtml+'<div class="divider"></div>'+verlaufHtml;
+  // Offene Aufgaben zu diesem Kunden
+  const offeneAufgaben = aufgabenProKunde(k.id);
+  const aufgabenHtml = `<div class="divider"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div class="section-label" style="margin:0;">Offene Aufgaben (${offeneAufgaben.length})</div>
+      <button class="btn btn-ghost btn-xs" onclick="openAufgabeNeu('${k.id}')">+ Aufgabe</button>
+    </div>
+    ${offeneAufgaben.length
+      ? offeneAufgaben.map(a => aufgabeCardHtml(a, true)).join('')
+      : `<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Keine offenen Aufgaben.</p>`}`;
+
+  document.getElementById('profilBody').innerHTML=tHtml+eaHtml+produktHtml+lfHtml+waHtml+'<div class="divider"></div>'+verlaufHtml+aufgabenHtml;
   document.getElementById('profilFooter').innerHTML=`
     <button class="btn btn-ghost" onclick="closeOverlay('profilOverlay')">Schließen</button>
     ${k.status!=='abgeschlossen'?`
@@ -1624,14 +2022,32 @@ async function gespraechSpeichern(){
   const naechsterKontakt=document.getElementById('g-naechster').value;
   const ampel=document.querySelector('input[name="g-amp"]:checked')?.value||k.ampel;
   const naechster=naechsterSchritt(k.aktuellerSchritt);
-  kundeUpdate(aktivesKundeId,kunde=>{
+
+  // Schlaf-Check auslesen
+  const sc = leseSchlafCheck('g', datum, k.id);
+
+  await kundeUpdate(aktivesKundeId,kunde=>{
     let neuerPfad=kunde.pfad;
     if(kunde.aktuellerSchritt==='erstanruf')neuerPfad=ergebnis==='alles_gut'?'A':'B';
     let naechsterSchrittId=kunde.aktuellerSchritt;
     if(ergebnis!=='nicht_erreicht'&&naechster)naechsterSchrittId=naechster.id;
-    return{...kunde,kontakte:[...(kunde.kontakte||[]),{typ:schrittLabel(kunde.aktuellerSchritt),datum,ergebnis,notiz}],pfad:neuerPfad,aktuellerSchritt:naechsterSchrittId,ampel,naechsterKontakt,status:naechsterSchrittId==='abgeschlossen'?'abgeschlossen':'aktiv'};
+    const neueSchlafchecks = sc ? [...(kunde.schlafchecks||[]), sc] : (kunde.schlafchecks||[]);
+    return{...kunde,
+      kontakte:[...(kunde.kontakte||[]),{typ:schrittLabel(kunde.aktuellerSchritt),datum,ergebnis,notiz}],
+      schlafchecks: neueSchlafchecks,
+      pfad:neuerPfad,aktuellerSchritt:naechsterSchrittId,ampel,naechsterKontakt,
+      status:naechsterSchrittId==='abgeschlossen'?'abgeschlossen':'aktiv'
+    };
   });
+
+  // Wiedervorlage aus Schlaf-Check als Aufgabe anlegen
+  if(sc?.wiedervorlage) {
+    const kundeName = `${k.name1}${k.name2?' & '+k.name2:''}`;
+    await legeWiedervorlageAufgabeAn(k.id, kundeName, sc.wiedervorlage, `Schlaf-Check Wiedervorlage: ${sc.massnahme}`);
+  }
+
   closeOverlay('gespraechOverlay');closeOverlay('profilOverlay');renderKundenliste();
+  updateAufgabenBadge();
   const u=kundeById(aktivesKundeId);
   if(u?.aktuellerSchritt==='empfehlung'&&ergebnis==='alles_gut')setTimeout(()=>openProfil(aktivesKundeId),200);
 }
@@ -2015,6 +2431,9 @@ Object.assign(window, {
   openWA, kundeAnlegen, bestaetigeReset, closeOverlay, overlayClick,
   switchTab, togglePerson2, setQuelle, toggleAddPanel,
   addEintragFromField, verwaltungHinzufuegen, loescheEintrag,
+  renderAufgaben, openAufgabeNeu, openAufgabeBearbeiten,
+  aufgabeSpeichern, aufgabeErledigen, aufgabeLoeschen, toggleKundenbezug,
+  renderSchlafCheckTab, toggleScBox, setSkala,
   startFirebaseListener: window.startFirebaseListener,
   faelligeKunden, renderErinnerungBanner, renderHeute,
 });
