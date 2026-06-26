@@ -319,6 +319,28 @@ document.addEventListener('DOMContentLoaded', () => {
     color: #b8c870; margin-top: 4px;
   }
 
+  /* KOMMUNIKATIONS-ZEITSTRAHL */
+  .zeitstrahl { position: relative; padding-left: 20px; margin-bottom: 18px; }
+  .zeitstrahl::before { content:''; position:absolute; left:7px; top:0; bottom:0; width:2px; background:var(--border); }
+  .zeitstrahl-eintrag { position: relative; margin-bottom: 10px; background: rgba(245,241,230,0.04); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .zeitstrahl-eintrag::before { content:''; position:absolute; left:-17px; top:13px; width:10px; height:10px; border-radius:50%; border: 2px solid #1e2610; }
+  .zeitstrahl-eintrag.eingehend { border-left: 3px solid #a0b0e0; }
+  .zeitstrahl-eintrag.eingehend::before { background: #a0b0e0; }
+  .zeitstrahl-eintrag.ausgehend { border-left: 3px solid var(--accent); }
+  .zeitstrahl-eintrag.ausgehend::before { background: var(--accent); }
+  .zeitstrahl-eintrag.intern { border-left: 3px solid var(--holz); }
+  .zeitstrahl-eintrag.intern::before { background: var(--holz); }
+  .zeitstrahl-header { display:flex; align-items:center; flex-wrap:wrap; gap:5px; margin-bottom:5px; }
+  .zeitstrahl-von { font-size:12px; font-weight:600; color:#F5F1E6; }
+  .zeitstrahl-datum { font-size:11px; color:var(--text-muted); margin-left:auto; white-space:nowrap; }
+  .zeitstrahl-kanal { font-size:10px; padding:2px 6px; border-radius:4px; background:rgba(245,241,230,0.08); color:var(--text-muted); border:1px solid var(--border); }
+  .zeitstrahl-ergebnis { font-size:10px; padding:2px 6px; border-radius:4px; font-weight:600; }
+  .erg-alles_gut { background:rgba(90,122,42,0.2); color:#9ed04e; }
+  .erg-teilweise_besser { background:rgba(184,134,11,0.18); color:#e0ad1a; }
+  .erg-nachbedarf { background:rgba(180,60,40,0.2); color:#f08070; }
+  .erg-notiz,.erg-info { background:rgba(245,241,230,0.07); color:var(--text-muted); }
+  .zeitstrahl-inhalt { font-size:13px; color:#ddd8cc; line-height:1.5; white-space:pre-wrap; }
+
   /* AUFTRÄGE */
   .auftrag-card {
     background: rgba(245,241,230,0.06);
@@ -875,6 +897,21 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>
     <div class="modal-body" id="profilBody"></div>
     <div class="modal-footer" id="profilFooter"></div>
+  </div>
+</div>
+
+<!-- MODAL: SCHNELLEINTRAG -->
+<div class="overlay" id="schnellOverlay" onclick="overlayClick(event)" style="z-index:300;">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Eintrag hinzufügen</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" id="schnellSubtitle">–</div>
+      </div>
+      <button class="modal-close" onclick="closeOverlay('schnellOverlay')">✕</button>
+    </div>
+    <div class="modal-body" id="schnellBody"></div>
+    <div class="modal-footer" id="schnellFooter"></div>
   </div>
 </div>
 
@@ -3145,9 +3182,7 @@ function openProfil(id){
 
   if(istGewerbe) {
     // ---- GEWERBE PROFIL ----
-    const kontaktHtml=(k.kontakte&&k.kontakte.length)
-      ?`<div class="kontaktverlauf"><div class="section-label">Kontaktverlauf</div>${k.kontakte.slice().reverse().map(e=>`<div class="kontakt-eintrag"><div class="kontakt-header"><span class="kontakt-typ">${e.typ}</span><span class="kontakt-datum">${formatDatum(e.datum)}</span></div><div class="kontakt-notiz">${e.notiz||'–'}</div></div>`).join('')}</div>`
-      :`<p style="color:var(--text-muted);font-size:13px;margin-bottom:14px;">Noch kein Kontakt erfasst.</p>`;
+    const kontaktHtml = renderZeitstrahl(k);
     const offeneAufgaben = aufgabenProKunde(k.id);
     bodyHtml = `
       ${k.email?`<div style="margin-bottom:12px;font-size:13px;color:#ddd8cc;">📧 ${k.email}</div>`:''}
@@ -3193,7 +3228,7 @@ function openProfil(id){
     const lfHtml=lf&&k.kundeStufe==='gekauft'?`<div class="leitfaden-box"><div class="leitfaden-title">💬 ${lf.titel}</div><div class="leitfaden-intro">${lf.intro}</div><ul class="leitfaden-fragen">${lf.fragen.map(f=>`<li>${f}</li>`).join('')}</ul></div>`:'';
     const beratungHtml = k.kundeStufe==='gekauft' ? beratungProfilHtml(k) : '';
     const waHtml=k.aktuellerSchritt==='empfehlung'?`<div class="wa-box"><div class="wa-title">📱 WhatsApp-Empfehlung senden</div><p style="font-size:13px;color:#b8b09e;margin-bottom:12px;">Der Kunde ist bereit.</p><button class="btn btn-wa btn-sm" onclick="openWA('${k.id}')">WhatsApp öffnen</button></div>`:'';
-    const verlaufHtml=(k.kontakte&&k.kontakte.length)?`<div class="kontaktverlauf"><div class="section-label">Kontaktverlauf (${k.kontakte.length})</div>${k.kontakte.slice().reverse().map(e=>`<div class="kontakt-eintrag"><div class="kontakt-header"><span class="kontakt-typ">${e.typ}</span><span class="kontakt-datum">${formatDatum(e.datum)}</span></div><div class="kontakt-notiz">${e.notiz||'–'}</div></div>`).join('')}</div>`:`<p style="color:var(--text-muted);font-size:13px;margin-bottom:14px;">Noch kein Kontakt erfasst.</p>`;
+    const verlaufHtml = renderZeitstrahl(k);
     const offeneAufgaben=aufgabenProKunde(k.id);
     const aufgabenHtml=`<div class="divider"></div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;"><div class="section-label" style="margin:0;">Offene Aufgaben (${offeneAufgaben.length})</div><button class="btn btn-ghost btn-xs" onclick="openAufgabeNeu('${k.id}')">+ Aufgabe</button></div>${offeneAufgaben.length?offeneAufgaben.map(a=>aufgabeCardHtml(a,true)).join(''):'<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Keine offenen Aufgaben.</p>'}`;
 
@@ -3420,6 +3455,168 @@ async function bearbeitenSpeichern() {
 
   closeOverlay('bearbeitenOverlay');
   openProfil(aktivesKundeId);
+  renderKundenliste();
+}
+
+// ============================================================
+// KOMMUNIKATIONS-ZEITSTRAHL
+// ============================================================
+
+const KANAL_ICONS = {
+  telefon: '📞', email: '📧', whatsapp: '📱',
+  persoenlich: '🤝', sonstiges: '💬'
+};
+const ERGEBNIS_LABELS = {
+  alles_gut: '✓ Alles gut', teilweise_besser: '◑ Wird besser',
+  nachbedarf: '⚠ Nachbedarf', nicht_erreicht: '✕ Nicht erreicht',
+  notiz: 'Notiz', info: 'Info'
+};
+
+function zeitstrahlRichtung(e) {
+  if(e.richtung) return e.richtung;
+  // Rückwärtskompatibilität: alte Einträge ohne Richtung
+  if(e.typ && (e.typ.includes('Kundenrückmeldung'))) return 'eingehend';
+  return 'ausgehend';
+}
+
+function renderZeitstrahl(k) {
+  const eintraege = [...(k.kontakte||[])].reverse();
+  const kundeName = k.name1.split(' ')[0];
+
+  return `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+    <div class="section-label" style="margin:0;">Kommunikationsverlauf (${eintraege.length})</div>
+    <button class="btn btn-ghost btn-xs" onclick="openSchnelleintrag('${k.id}')">+ Eintrag</button>
+  </div>
+  ${eintraege.length ? `<div class="zeitstrahl">
+    ${eintraege.map(e => {
+      const richtung = zeitstrahlRichtung(e);
+      const kanal = e.kanal || 'telefon';
+      const vonWem = e.vonWem || (richtung==='eingehend' ? kundeName : (e.berater||'Keiten'));
+      const ergebnisLabel = ERGEBNIS_LABELS[e.ergebnis] || '';
+      const ergebnisHtml = e.ergebnis && e.ergebnis !== 'notiz' && e.ergebnis !== 'info'
+        ? `<span class="zeitstrahl-ergebnis erg-${e.ergebnis}">${ergebnisLabel}</span>` : '';
+      return `<div class="zeitstrahl-eintrag ${richtung}">
+        <div class="zeitstrahl-header">
+          <span class="zeitstrahl-von">${KANAL_ICONS[kanal]||'💬'} ${vonWem}</span>
+          ${richtung==='eingehend'
+            ? `<span class="zeitstrahl-kanal" style="background:rgba(80,100,160,0.12);color:#a0b0e0;border-color:rgba(80,100,160,0.3);">eingehend</span>`
+            : richtung==='intern'
+            ? `<span class="zeitstrahl-kanal" style="background:rgba(139,95,50,0.12);color:var(--holz-light);border-color:rgba(139,95,50,0.3);">intern</span>`
+            : `<span class="zeitstrahl-kanal">ausgehend</span>`}
+          <span class="zeitstrahl-kanal">${e.typ||''}</span>
+          ${ergebnisHtml}
+          <span class="zeitstrahl-datum">${formatDatum(e.datum)}</span>
+        </div>
+        ${e.notiz ? `<div class="zeitstrahl-inhalt">${e.notiz}</div>` : ''}
+      </div>`;
+    }).join('')}
+  </div>` : `<p style="color:var(--text-muted);font-size:13px;margin-bottom:14px;">Noch kein Eintrag vorhanden.</p>`}`;
+}
+
+function openSchnelleintrag(id) {
+  aktivesKundeId = id;
+  const k = kundeById(id); if(!k) return;
+  document.getElementById('profilOverlay').classList.remove('open');
+  document.getElementById('schnellSubtitle').textContent = k.name1 + (k.name2 ? ' & '+k.name2 : '');
+
+  document.getElementById('schnellBody').innerHTML = `
+    <div class="form-grid" style="margin-bottom:12px;">
+      <div class="form-row">
+        <label class="form-label">Datum</label>
+        <input class="form-input" type="date" id="se-datum" value="${new Date().toISOString().slice(0,10)}" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">Kanal</label>
+        <select class="form-select" id="se-kanal">
+          <option value="telefon">📞 Telefon</option>
+          <option value="email">📧 E-Mail</option>
+          <option value="whatsapp">📱 WhatsApp</option>
+          <option value="persoenlich">🤝 Persönlich</option>
+          <option value="sonstiges">💬 Sonstiges</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Richtung</label>
+      <div class="radio-group">
+        <div class="radio-opt">
+          <input type="radio" name="se-richtung" id="se-aus" value="ausgehend" checked>
+          <label for="se-aus" style="border-color:rgba(123,131,50,0.4);">↗ Wir melden uns</label>
+        </div>
+        <div class="radio-opt">
+          <input type="radio" name="se-richtung" id="se-ein" value="eingehend">
+          <label for="se-ein" style="border-color:rgba(80,100,160,0.4);">↙ Kunde meldet sich</label>
+        </div>
+        <div class="radio-opt">
+          <input type="radio" name="se-richtung" id="se-int" value="intern">
+          <label for="se-int" style="border-color:rgba(139,95,50,0.4);">🔒 Interne Notiz</label>
+        </div>
+      </div>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Von / Wer</label>
+      <select class="form-select" id="se-vonwem">
+        <option value="">– automatisch –</option>
+        <option value="${k.name1.split(' ')[0]}">${k.name1.split(' ')[0]} (Kunde)</option>
+        ${k.name2?`<option value="${k.name2.split(' ')[0]}">${k.name2.split(' ')[0]} (Kunde)</option>`:''}
+        ${['Franz-Josef','Viktor','Elias','Samuel'].map(b=>`<option value="${b}">${b}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Inhalt / Notiz</label>
+      <textarea class="form-textarea" id="se-inhalt" placeholder="Was wurde gesagt, geschrieben, besprochen?" style="min-height:100px;"></textarea>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Ergebnis (optional)</label>
+      <select class="form-select" id="se-ergebnis">
+        <option value="info">– nur Notiz / Info –</option>
+        <option value="alles_gut">✓ Alles gut</option>
+        <option value="teilweise_besser">◑ Wird besser</option>
+        <option value="nachbedarf">⚠ Nachbedarf</option>
+      </select>
+    </div>`;
+
+  document.getElementById('schnellFooter').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeOverlay('schnellOverlay');openProfil('${id}')">Abbrechen</button>
+    <button class="btn btn-primary" onclick="schnellEintragSpeichern('${id}')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+      Eintrag speichern
+    </button>`;
+
+  document.getElementById('schnellOverlay').classList.add('open');
+}
+
+async function schnellEintragSpeichern(id) {
+  const inhalt = document.getElementById('se-inhalt')?.value.trim();
+  if(!inhalt) { alert('Bitte einen Inhalt eingeben.'); return; }
+
+  const richtung = document.querySelector('input[name="se-richtung"]:checked')?.value || 'ausgehend';
+  const k = kundeById(id);
+  const vonWemSel = document.getElementById('se-vonwem')?.value;
+  const vonWem = vonWemSel || (richtung === 'eingehend' ? k?.name1.split(' ')[0] : 'Keiten');
+
+  const eintrag = {
+    typ: document.getElementById('se-kanal')?.options[document.getElementById('se-kanal').selectedIndex]?.text || 'Notiz',
+    datum: document.getElementById('se-datum')?.value || new Date().toISOString().slice(0,10),
+    kanal: document.getElementById('se-kanal')?.value || 'sonstiges',
+    richtung,
+    vonWem,
+    ergebnis: document.getElementById('se-ergebnis')?.value || 'info',
+    notiz: inhalt,
+  };
+
+  await kundeUpdate(id, k => ({
+    ...k,
+    kontakte: [...(k.kontakte||[]), eintrag],
+    // Wenn Nachbedarf → Schleife aktivieren
+    ...(eintrag.ergebnis === 'nachbedarf' ? {
+      pfad: 'B', nachbetreuungAktiv: true, ampel: 'gelb',
+      naechsterKontakt: dateAdd(7)
+    } : {}),
+  }));
+
+  closeOverlay('schnellOverlay');
+  openProfil(id);
   renderKundenliste();
 }
 
@@ -4011,7 +4208,7 @@ Object.assign(window, {
   openBeratung, beratungSpeichern, waehleMotiv, waehleMotivSek,
   angebotPositionHinzufuegen, angebotPositionEntfernen, angebotStatusAendern,
   angebotPositionLoeschen,
-  openVorqualifizierung, vorqualifizierungSpeichern,
+  openSchnelleintrag, schnellEintragSpeichern,
   openKaufErfassen, kaufSpeichern, openLieferdatumErfassen,
   setQuelleKf,
   renderAuftraege, openAuftragNeu, openAuftragDetail, openAuftragBearbeiten,
