@@ -1736,11 +1736,12 @@ function openBeratung(id) {
   const k = kundeById(id); if(!k) return;
   const b = k.beratung || {};
 
-  document.getElementById('beratungSubtitle').textContent = `${k.name1}${k.name2?' & '+k.name2:''}`;
-
-  // Motivauswahl State
+  // State initialisieren
+  _tempPositionen = JSON.parse(JSON.stringify(b.positionen || []));
   window._primMotiv = b.primMotiv || '';
   window._sekMotiv = new Set(b.sekMotiv || []);
+
+  document.getElementById('beratungSubtitle').textContent = `${k.name1}${k.name2?' & '+k.name2:''}`;
 
   document.getElementById('beratungBody').innerHTML = `
     <div style="max-height:68vh;overflow-y:auto;padding-right:4px;">
@@ -1860,26 +1861,19 @@ function waehleMotivSek(id) {
 async function beratungSpeichern() {
   const k = kundeById(aktivesKundeId); if(!k) return;
 
-  // Bestehende Positionen aus DOM + neue aus _tempPositionen zusammenführen
-  const bestehendeIds = new Set(_tempPositionen.map(p => p.id));
-  const altePositionen = (k.beratung?.positionen || []).filter(p => !bestehendeIds.has(p.id));
-
-  // Status-Änderungen aus DOM lesen
-  const allePositionen = [...(k.beratung?.positionen||[]).map(p => {
+  // Status-Änderungen aus bestehenden Zeilen lesen
+  _tempPositionen = _tempPositionen.map(p => {
     const sel = document.querySelector(`#ap-row-${p.id} select`);
     return sel ? {...p, status: sel.value} : p;
-  }), ..._tempPositionen].filter(p => {
-    const row = document.getElementById(`ap-row-${p.id}`);
-    return row !== null || _tempPositionen.find(x => x.id === p.id);
   });
 
   await kundeUpdate(aktivesKundeId, kunde => ({
     ...kunde,
     beratung: {
       primMotiv: window._primMotiv || '',
-      sekMotiv: [...window._sekMotiv],
-      wuensche: document.getElementById('b-wuensche').value.trim(),
-      positionen: allePositionen,
+      sekMotiv: [...(window._sekMotiv || new Set())],
+      wuensche: document.getElementById('b-wuensche')?.value.trim() || '',
+      positionen: _tempPositionen,
     }
   }));
 
