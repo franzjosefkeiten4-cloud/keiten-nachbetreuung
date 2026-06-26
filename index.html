@@ -535,85 +535,143 @@ document.addEventListener('DOMContentLoaded', () => {
     <div class="page-header">
       <div>
         <div class="page-title">Neuen Kunden anlegen</div>
-        <div class="page-subtitle">Einzel- oder Paarhaushalt – beide Schlafsysteme in einem Datensatz.</div>
+        <div class="page-subtitle">Zuerst den Kundentyp wählen</div>
       </div>
     </div>
-    <div class="neukunde-box">
-      <div class="form-grid">
-        <div class="form-row">
-          <label class="form-label">Name Person 1</label>
-          <input class="form-input" id="nk-name1" placeholder="z. B. Thomas Meier" />
+
+    <!-- WEICHE -->
+    <div id="nk-weiche">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:600px;margin:0 auto;">
+        <div onclick="zeigeNkFormular('privat')" style="background:rgba(123,131,50,0.10);border:1px solid rgba(123,131,50,0.3);border-radius:14px;padding:28px 20px;text-align:center;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(123,131,50,0.18)'" onmouseout="this.style.background='rgba(123,131,50,0.10)'">
+          <div style="font-size:36px;margin-bottom:12px;">🛏</div>
+          <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:600;color:#F5F1E6;margin-bottom:6px;">Privatkunde</div>
+          <div style="font-size:13px;color:#b8b09e;line-height:1.5;">Schlafberatung, Nachbetreuung, Paarhaushalt</div>
         </div>
-        <div class="form-row">
-          <label class="form-label">Name Person 2 (optional)</label>
-          <input class="form-input" id="nk-name2" placeholder="z. B. Sandra Meier" oninput="togglePerson2(this.value)" />
+        <div onclick="zeigeNkFormular('gewerbe')" style="background:rgba(139,95,50,0.10);border:1px solid rgba(139,95,50,0.3);border-radius:14px;padding:28px 20px;text-align:center;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(139,95,50,0.18)'" onmouseout="this.style.background='rgba(139,95,50,0.10)'">
+          <div style="font-size:36px;margin-bottom:12px;">🏭</div>
+          <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:600;color:#F5F1E6;margin-bottom:6px;">Gewerbekunde</div>
+          <div style="font-size:13px;color:#b8b09e;line-height:1.5;">Industrie, Firmenkunde, Auftragsabwicklung</div>
         </div>
-        <div class="form-row">
-          <label class="form-label">Telefon Person 1</label>
-          <input class="form-input" id="nk-tel1" placeholder="+49 171 ..." />
-          <div style="display:flex;gap:6px;margin-top:6px;">
-            <button type="button" class="quelle-btn active-keiten" id="nk-wa1-btn" onclick="setWaFlag('nk','1','wa',this)" style="flex:1;text-align:center;">📱 WhatsApp</button>
-            <button type="button" class="quelle-btn" id="nk-sms1-btn" onclick="setWaFlag('nk','1','sms',this)" style="flex:1;text-align:center;">💬 SMS</button>
+      </div>
+    </div>
+
+    <!-- PRIVATKUNDE FORMULAR -->
+    <div id="nk-privat-form" style="display:none;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+        <button class="btn btn-ghost btn-sm" onclick="zeigeNkWeiche()">← Zurück</button>
+        <span style="font-size:13px;color:var(--text-muted);">Privatkunde · Schlafberatung</span>
+      </div>
+      <div class="neukunde-box">
+        <div class="form-grid">
+          <div class="form-row">
+            <label class="form-label">Name Person 1</label>
+            <input class="form-input" id="nk-name1" placeholder="z. B. Thomas Meier" />
           </div>
-          <input type="hidden" id="nk-wa1" value="wa" />
-        </div>
-        <div class="form-row">
-          <label class="form-label">Telefon Person 2</label>
-          <input class="form-input" id="nk-tel2" placeholder="+49 172 ... (optional)" />
-          <div style="display:flex;gap:6px;margin-top:6px;">
-            <button type="button" class="quelle-btn active-keiten" id="nk-wa2-btn" onclick="setWaFlag('nk','2','wa',this)" style="flex:1;text-align:center;">📱 WhatsApp</button>
-            <button type="button" class="quelle-btn" id="nk-sms2-btn" onclick="setWaFlag('nk','2','sms',this)" style="flex:1;text-align:center;">💬 SMS</button>
+          <div class="form-row">
+            <label class="form-label">Name Person 2 (optional)</label>
+            <input class="form-input" id="nk-name2" placeholder="z. B. Sandra Meier" oninput="togglePerson2(this.value)" />
           </div>
-          <input type="hidden" id="nk-wa2" value="wa" />
+          <div class="form-row">
+            <label class="form-label">Telefon Person 1</label>
+            <input class="form-input" id="nk-tel1" placeholder="+49 171 ..." />
+            <div style="display:flex;gap:6px;margin-top:6px;">
+              <button type="button" class="quelle-btn active-keiten" onclick="setWaFlag('nk','1','wa',this)" style="flex:1;text-align:center;">📱 WhatsApp</button>
+              <button type="button" class="quelle-btn" onclick="setWaFlag('nk','1','sms',this)" style="flex:1;text-align:center;">💬 SMS</button>
+            </div>
+            <input type="hidden" id="nk-wa1" value="wa" />
+          </div>
+          <div class="form-row">
+            <label class="form-label">Telefon Person 2</label>
+            <input class="form-input" id="nk-tel2" placeholder="+49 172 ... (optional)" />
+            <div style="display:flex;gap:6px;margin-top:6px;">
+              <button type="button" class="quelle-btn active-keiten" onclick="setWaFlag('nk','2','wa',this)" style="flex:1;text-align:center;">📱 WhatsApp</button>
+              <button type="button" class="quelle-btn" onclick="setWaFlag('nk','2','sms',this)" style="flex:1;text-align:center;">💬 SMS</button>
+            </div>
+            <input type="hidden" id="nk-wa2" value="wa" />
+          </div>
+          <div class="form-row">
+            <label class="form-label">Berater</label>
+            <select class="form-select" id="nk-berater">
+              <option value="Franz-Josef">Franz-Josef</option>
+              <option value="Viktor">Viktor</option>
+              <option value="Elias">Elias</option>
+              <option value="Samuel">Samuel</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label class="form-label">Erstkontakt-Datum</label>
+            <input class="form-input" type="date" id="nk-kaufdatum" />
+          </div>
         </div>
-        <div class="form-row">
-          <label class="form-label">Berater</label>
-          <select class="form-select" id="nk-berater">
-            <option value="Franz-Josef">Franz-Josef</option>
-            <option value="Viktor">Viktor</option>
-            <option value="Elias">Elias</option>
-            <option value="Samuel">Samuel</option>
-          </select>
+        <div class="form-row" style="margin-top:8px;">
+          <label class="form-label">Erste Notiz (optional)</label>
+          <textarea class="form-textarea" id="nk-notiz" placeholder="Erstkontakt, Anfrage, Vorqualifizierung ..."></textarea>
         </div>
-        <div class="form-row">
-          <label class="form-label">Kaufdatum</label>
-          <input class="form-input" type="date" id="nk-kaufdatum" />
-        </div>
-        <div class="form-row">
-          <label class="form-label">Lieferdatum</label>
-          <input class="form-input" type="date" id="nk-lieferdatum" />
+        <div class="hint" style="margin-bottom:12px;">💡 Produkte, Schlafmotive und Beratungsdetails werden nach dem Gespräch im Kundenprofil erfasst.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="kundeAnlegen('privat')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+            Kunde anlegen
+          </button>
+          <button class="btn btn-ghost" onclick="showView('kundenliste')">Abbrechen</button>
         </div>
       </div>
+    </div>
 
-      <div class="person-tabs" style="margin-top:8px;" id="personTabs">
-        <button class="person-tab active" onclick="switchTab(0)">🛏 Person 1</button>
-        <button class="person-tab" onclick="switchTab(1)" id="tab-p2" style="opacity:0.4;pointer-events:none;">🛏 Person 2</button>
+    <!-- GEWERBEKUNDE FORMULAR -->
+    <div id="nk-gewerbe-form" style="display:none;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+        <button class="btn btn-ghost btn-sm" onclick="zeigeNkWeiche()">← Zurück</button>
+        <span style="font-size:13px;color:var(--text-muted);">Gewerbekunde · Industrie</span>
       </div>
-
-      <div class="person-panel active" id="panel-p1">
-        <div class="produkt-sektion">
-          <div class="produkt-sektion-title">Schlafsystem Person 1</div>
-          <div id="felder-p1"></div>
+      <div class="neukunde-box">
+        <div class="form-grid">
+          <div class="form-row">
+            <label class="form-label">Firma / Kundenname</label>
+            <input class="form-input" id="nk-firma" placeholder="z. B. Flender GmbH, Siemens AG" />
+          </div>
+          <div class="form-row">
+            <label class="form-label">Ansprechpartner</label>
+            <input class="form-input" id="nk-ansprechpartner" placeholder="z. B. Herr Müller" />
+          </div>
+          <div class="form-row">
+            <label class="form-label">Telefon / WhatsApp</label>
+            <input class="form-input" id="nk-gew-tel" placeholder="+49 ..." />
+            <div style="display:flex;gap:6px;margin-top:6px;">
+              <button type="button" class="quelle-btn active-keiten" onclick="setWaFlag('nk-gew','','wa',this)" style="flex:1;text-align:center;">📱 WhatsApp</button>
+              <button type="button" class="quelle-btn" onclick="setWaFlag('nk-gew','','sms',this)" style="flex:1;text-align:center;">💬 SMS</button>
+            </div>
+            <input type="hidden" id="nk-gew-wa" value="wa" />
+          </div>
+          <div class="form-row">
+            <label class="form-label">E-Mail (optional)</label>
+            <input class="form-input" id="nk-email" placeholder="name@firma.de" type="email" />
+          </div>
+          <div class="form-row">
+            <label class="form-label">Berater</label>
+            <select class="form-select" id="nk-gew-berater">
+              <option value="Franz-Josef">Franz-Josef</option>
+              <option value="Viktor">Viktor</option>
+              <option value="Elias">Elias</option>
+              <option value="Samuel">Samuel</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label class="form-label">Erstkontakt-Datum</label>
+            <input class="form-input" type="date" id="nk-gew-datum" />
+          </div>
         </div>
-      </div>
-
-      <div class="person-panel" id="panel-p2">
-        <div class="produkt-sektion">
-          <div class="produkt-sektion-title">Schlafsystem Person 2</div>
-          <div id="felder-p2"></div>
+        <div class="form-row" style="margin-top:8px;">
+          <label class="form-label">Notiz / Anfrage</label>
+          <textarea class="form-textarea" id="nk-gew-notiz" placeholder="Was ist die Anfrage? Welche Produkte? Besonderheiten?"></textarea>
         </div>
-      </div>
-
-      <div class="form-row" style="margin-top:4px;">
-        <label class="form-label">Erste Notiz (optional)</label>
-        <textarea class="form-textarea" id="nk-notiz" placeholder="Besondere Wünsche, körperliche Hinweise, Erwartungen ..."></textarea>
-      </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
-        <button class="btn btn-primary" onclick="kundeAnlegen()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
-          Kunde anlegen
-        </button>
-        <button class="btn btn-ghost" onclick="showView('kundenliste')">Abbrechen</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
+          <button class="btn btn-primary" onclick="kundeAnlegen('gewerbe')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+            Gewerbekunde anlegen
+          </button>
+          <button class="btn btn-ghost" onclick="showView('kundenliste')">Abbrechen</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1485,7 +1543,7 @@ function showView(name){
   if(name==='schlafchecks')renderSchlafCheckTab();
   if(name==='archiv')renderArchiv();
   if(name==='eintraege')renderEintraege();
-  if(name==='neukunde'){renderProduktFelder('felder-p1','p1');renderProduktFelder('felder-p2','p2');}
+  if(name==='neukunde') zeigeNkWeiche();
 }
 
 // ============================================================
@@ -2689,33 +2747,35 @@ function renderKundenliste(){
   const aktive=KUNDEN.filter(k=>k.status!=='abgeschlossen');
   if(!aktive.length){grid.innerHTML=`<div class="empty-state"><div class="empty-state-icon">🛏️</div><div class="empty-state-title">Noch keine Kunden</div><div>Legen Sie den ersten Kunden an.</div></div>`;return;}
   grid.innerHTML=aktive.map(k=>{
+    const istGewerbe = k.typ === 'gewerbe';
     const t=termindringlichkeit(k.naechsterKontakt);
     const ea=erstanrufStatus(k);
     const ueberf=ea&&(ea.typ==='kritisch'||ea.typ==='ueberfaellig');
-    const isPaar=!!k.name2;
     let warnHtml='';
     if(ea){
       if(ueberf)warnHtml=`<div class="erstanruf-warn">⚠️ <strong>${ea.text}</strong></div>`;
       else if(ea.typ==='bald')warnHtml=`<div class="lieferdatum-hinweis">🕐 ${ea.text}</div>`;
     }
+    const ansprechpartner = istGewerbe && k.name2 ? ` · ${k.name2}` : (k.name2 ? ` & ${k.name2}` : '');
     return`<div class="kunde-card${ueberf?' ueberfaellig':''}" onclick="openProfil('${k.id}')">
       <div>
-        <div class="kunde-name">${k.name1}${isPaar?` & ${k.name2}`:''}</div>
+        <div class="kunde-name">${k.name1}${ansprechpartner}
+          ${istGewerbe?`<span class="chip" style="margin-left:6px;background:rgba(139,95,50,0.18);border-color:rgba(139,95,50,0.35);color:var(--holz-light);vertical-align:middle;">🏭 Gewerbe</span>`:''}
+        </div>
         <div class="kunde-meta">
           <span>👤 ${k.berater}</span>
-          <span>📅 Kauf: ${formatDatum(k.kaufdatum)}</span>
-          ${k.lieferdatum?`<span>🚚 Lieferung: ${formatDatum(k.lieferdatum)}</span>`:''}
-          ${isPaar?'<span>👫 Paar</span>':''}
+          <span>📅 ${formatDatum(k.kaufdatum)}</span>
+          ${k.lieferdatum&&!istGewerbe?`<span>🚚 Lieferung: ${formatDatum(k.lieferdatum)}</span>`:''}
         </div>
-        <div class="naechste-aktion"><strong>Schritt:</strong> ${schrittLabel(k.aktuellerSchritt)}${k.pfad==='B'?` · <span class="pfad-badge pfad-b">Pfad B</span>`:''}</div>
-        <div class="produkt-chips">${allChips(k)}</div>
+        ${!istGewerbe?`<div class="naechste-aktion"><strong>Schritt:</strong> ${schrittLabel(k.aktuellerSchritt)}${k.pfad==='B'?` · <span class="pfad-badge pfad-b">Pfad B</span>`:''}</div>`:''}
+        ${!istGewerbe?`<div class="produkt-chips">${allChips(k)}</div>`:''}
         ${warnHtml}
       </div>
       <div class="kunde-right">
         ${ampelBadge(k.ampel)}
         <div style="text-align:right;">
-          <div style="font-size:13px;font-weight:600;color:${t.cls==='gruen'?'#9ed04e':t.cls==='rot'?'#f08070':'#e0ad1a'}">${t.text}</div>
-          <div style="font-size:11px;color:var(--text-muted)">${formatDatum(k.naechsterKontakt)}</div>
+          ${k.naechsterKontakt&&!istGewerbe?`<div style="font-size:13px;font-weight:600;color:${t.cls==='gruen'?'#9ed04e':t.cls==='rot'?'#f08070':'#e0ad1a'}">${t.text}</div><div style="font-size:11px;color:var(--text-muted)">${formatDatum(k.naechsterKontakt)}</div>`:''}
+          ${istGewerbe?`<div style="font-size:12px;color:var(--text-muted);">Aufträge: ${auftraegeProKunde(k.id).length}</div>`:''}
         </div>
       </div>
     </div>`;
@@ -2731,78 +2791,83 @@ let aktivesKundeId=null;
 function openProfil(id){
   aktivesKundeId=id;
   const k=kundeById(id);if(!k)return;
-  const isPaar=!!k.name2;
+  const istGewerbe = k.typ === 'gewerbe';
+  const isPaar = !istGewerbe && !!k.name2;
 
-  document.getElementById('profilName').textContent=isPaar?`${k.name1} & ${k.name2}`:k.name1;
-  document.getElementById('profilMeta').innerHTML=
-    `${k.berater} · Kauf: ${formatDatum(k.kaufdatum)}`+
-    (k.lieferdatum?` · Lieferung: ${formatDatum(k.lieferdatum)}`:'')+
+  // Header
+  const titelName = istGewerbe
+    ? `${k.name1}${k.name2?' · '+k.name2:''}`
+    : `${k.name1}${k.name2?' & '+k.name2:''}`;
+  document.getElementById('profilName').textContent = titelName;
+  document.getElementById('profilMeta').innerHTML =
+    `${k.berater} · ${formatDatum(k.kaufdatum)}`+
+    (!istGewerbe?(k.lieferdatum?` · Lieferung: ${formatDatum(k.lieferdatum)}`:'')+
     ` · <span class="pfad-badge ${k.pfad==='A'?'pfad-a':'pfad-b'}">Pfad ${k.pfad}</span>`+
-    (isPaar?' · <span style="color:#c8c0ae">👫 Paar</span>':'')+
+    (isPaar?' · <span style="color:#c8c0ae">👫 Paar</span>':''):
+    ' · <span class="chip" style="background:rgba(139,95,50,0.18);color:var(--holz-light);">🏭 Gewerbe</span>')+
     (k.tel1?` · ${k.tel1}`:'')+(k.tel2?` / ${k.tel2}`:'');
 
-  const tHtml=`<div class="prozess-timeline">${PROZESS_SCHRITTE.slice(0,-1).map((s,i)=>{const idx=PROZESS_SCHRITTE.findIndex(x=>x.id===k.aktuellerSchritt);return`<div class="timeline-step ${i<idx?'done':''} ${i===idx?'active':''}"><div class="step-circle">${i<idx?'✓':i+1}</div><div class="step-label">${s.label}</div></div>`;}).join('')}</div>`;
+  let bodyHtml = '';
 
-  const ea=erstanrufStatus(k);
-  let eaHtml='';
-  if(ea&&ea.typ!=='ok'){const w=ea.typ==='kritisch'||ea.typ==='ueberfaellig';eaHtml=`<div class="${w?'erstanruf-warn':'lieferdatum-hinweis'}" style="margin-bottom:16px;">${w?'⚠️':'🕐'} ${ea.text}</div>`;}
+  if(istGewerbe) {
+    // ---- GEWERBE PROFIL ----
+    const kontaktHtml=(k.kontakte&&k.kontakte.length)
+      ?`<div class="kontaktverlauf"><div class="section-label">Kontaktverlauf</div>${k.kontakte.slice().reverse().map(e=>`<div class="kontakt-eintrag"><div class="kontakt-header"><span class="kontakt-typ">${e.typ}</span><span class="kontakt-datum">${formatDatum(e.datum)}</span></div><div class="kontakt-notiz">${e.notiz||'–'}</div></div>`).join('')}</div>`
+      :`<p style="color:var(--text-muted);font-size:13px;margin-bottom:14px;">Noch kein Kontakt erfasst.</p>`;
+    const offeneAufgaben = aufgabenProKunde(k.id);
+    bodyHtml = `
+      ${k.email?`<div style="margin-bottom:12px;font-size:13px;color:#ddd8cc;">📧 ${k.email}</div>`:''}
+      ${kontaktHtml}
+      <div class="divider"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div class="section-label" style="margin:0;">Offene Aufgaben (${offeneAufgaben.length})</div>
+        <button class="btn btn-ghost btn-xs" onclick="openAufgabeNeu('${k.id}')">+ Aufgabe</button>
+      </div>
+      ${offeneAufgaben.length?offeneAufgaben.map(a=>aufgabeCardHtml(a)).join(''):'<p style="font-size:12px;color:var(--text-muted);">Keine offenen Aufgaben.</p>'}
+      ${auftraegeProfilHtml(k.id)}`;
 
-  const pFelder=FELDER_REIHENFOLGE.map(f=>({key:f,...STAMM[f]}));
-  const liegeInfo = (p) => {
-    if(!p) return '';
-    const masse = (p.breite || p.laenge) ? `📏 ${p.breite?p.breite+' cm':'?'} × ${p.laenge?p.laenge+' cm':'?'}` : '';
-    const partner = p.partnermatratze ? '<span class="chip" style="background:rgba(80,100,160,0.18);border-color:rgba(80,100,160,0.35);color:#a0b0e0;display:inline-block;margin-top:4px;">Partnermatratze</span>' : '';
-    if(!masse && !partner) return '';
-    return `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">
-      ${masse ? `<div class="produkt-item-label">📐 Liegefläche</div><div class="produkt-item-wert">${masse}</div>` : ''}
-      ${partner}
-    </div>`;
-  };
-  let produktHtml='';
-  if(isPaar){
-    const rb=(produkte,titel)=>`<div class="person-block"><div class="person-block-title">${titel}</div>${pFelder.map(f=>{const p=(produkte||{})[f.key]||{};const eigenQ=p.name&&EIGENE[f.key]&&EIGENE[f.key].includes(p.name)?'eigen':p.quelle;return`<div class="produkt-item-label">${f.icon} ${f.label}</div><div class="produkt-item-wert">${p.name||'–'}</div>${p.name?`<span class="chip ${eigenQ}" style="margin-bottom:7px;display:inline-block">${eigenQ==='eigen'?'Eigener Eintrag':eigenQ==='keiten'?'Keiten':'Fremd'}</span>`:''}`}).join('')}${liegeInfo(produkte)}</div>`;
-    produktHtml=`<div class="paar-produkt-grid">${rb(k.person1,`🛏 ${k.name1.split(' ')[0]}`)}${rb(k.person2,`🛏 ${k.name2.split(' ')[0]}`)}</div>`;
   } else {
-    produktHtml=`<div style="background:rgba(245,241,230,0.04);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:18px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">${pFelder.map(f=>{const p=(k.person1||{})[f.key]||{};const eigenQ=p.name&&EIGENE[f.key]&&EIGENE[f.key].includes(p.name)?'eigen':p.quelle;return`<div><div class="produkt-item-label">${f.icon} ${f.label}</div><div class="produkt-item-wert">${p.name||'–'}</div>${p.name?`<span class="chip ${eigenQ}" style="display:inline-block">${eigenQ==='eigen'?'Eigener Eintrag':eigenQ==='keiten'?'Keiten':'Fremd'}</span>`:''}</div>`}).join('')}<div style="grid-column:1/-1">${liegeInfo(k.person1)}</div></div>`;
+    // ---- PRIVAT PROFIL ----
+    const tHtml=`<div class="prozess-timeline">${PROZESS_SCHRITTE.slice(0,-1).map((s,i)=>{const idx=PROZESS_SCHRITTE.findIndex(x=>x.id===k.aktuellerSchritt);return`<div class="timeline-step ${i<idx?'done':''} ${i===idx?'active':''}"><div class="step-circle">${i<idx?'✓':i+1}</div><div class="step-label">${s.label}</div></div>`;}).join('')}</div>`;
+
+    const ea=erstanrufStatus(k);
+    let eaHtml='';
+    if(ea&&ea.typ!=='ok'){const w=ea.typ==='kritisch'||ea.typ==='ueberfaellig';eaHtml=`<div class="${w?'erstanruf-warn':'lieferdatum-hinweis'}" style="margin-bottom:16px;">${w?'⚠️':'🕐'} ${ea.text}</div>`;}
+
+    const pFelder=FELDER_REIHENFOLGE.map(f=>({key:f,...STAMM[f]}));
+    const liegeInfo=(p)=>{if(!p)return'';const masse=(p.breite||p.laenge)?`📏 ${p.breite?p.breite+' cm':'?'} × ${p.laenge?p.laenge+' cm':'?'}`:'';const partner=p.partnermatratze?'<span class="chip" style="background:rgba(80,100,160,0.18);border-color:rgba(80,100,160,0.35);color:#a0b0e0;display:inline-block;margin-top:4px;">Partnermatratze</span>':'';if(!masse&&!partner)return'';return`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">${masse?`<div class="produkt-item-label">📐 Liegefläche</div><div class="produkt-item-wert">${masse}</div>`:''}${partner}</div>`;};
+
+    let produktHtml='';
+    if(isPaar){
+      const rb=(produkte,titel)=>`<div class="person-block"><div class="person-block-title">${titel}</div>${pFelder.map(f=>{const p=(produkte||{})[f.key]||{};const eigenQ=p.name&&EIGENE[f.key]&&EIGENE[f.key].includes(p.name)?'eigen':p.quelle;return`<div class="produkt-item-label">${f.icon} ${f.label}</div><div class="produkt-item-wert">${p.name||'–'}</div>${p.name?`<span class="chip ${eigenQ}" style="margin-bottom:7px;display:inline-block">${eigenQ==='eigen'?'Eigener Eintrag':eigenQ==='keiten'?'Keiten':'Fremd'}</span>`:''}`}).join('')}${liegeInfo(produkte)}</div>`;
+      produktHtml=`<div class="paar-produkt-grid">${rb(k.person1,`🛏 ${k.name1.split(' ')[0]}`)}${rb(k.person2,`🛏 ${k.name2.split(' ')[0]}`)}</div>`;
+    } else if(k.person1) {
+      produktHtml=`<div style="background:rgba(245,241,230,0.04);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:18px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">${pFelder.map(f=>{const p=(k.person1||{})[f.key]||{};const eigenQ=p.name&&EIGENE[f.key]&&EIGENE[f.key].includes(p.name)?'eigen':p.quelle;return`<div><div class="produkt-item-label">${f.icon} ${f.label}</div><div class="produkt-item-wert">${p.name||'–'}</div>${p.name?`<span class="chip ${eigenQ}" style="display:inline-block">${eigenQ==='eigen'?'Eigener Eintrag':eigenQ==='keiten'?'Keiten':'Fremd'}</span>`:''}</div>`}).join('')}<div style="grid-column:1/-1">${liegeInfo(k.person1)}</div></div>`;
+    }
+
+    let lfKey=k.aktuellerSchritt;
+    if(lfKey==='erstanruf'&&k.pfad==='B')lfKey='erstanruf_nachbedarf';
+    const lf=LEITFAEDEN[lfKey];
+    const lfHtml=lf?`<div class="leitfaden-box"><div class="leitfaden-title">💬 ${lf.titel}</div><div class="leitfaden-intro">${lf.intro}</div><ul class="leitfaden-fragen">${lf.fragen.map(f=>`<li>${f}</li>`).join('')}</ul></div>`:'';
+    const beratungHtml=beratungProfilHtml(k);
+    const waHtml=k.aktuellerSchritt==='empfehlung'?`<div class="wa-box"><div class="wa-title">📱 WhatsApp-Empfehlung senden</div><p style="font-size:13px;color:#b8b09e;margin-bottom:12px;">Der Kunde ist bereit.</p><button class="btn btn-wa btn-sm" onclick="openWA('${k.id}')">WhatsApp öffnen</button></div>`:'';
+    const verlaufHtml=(k.kontakte&&k.kontakte.length)?`<div class="kontaktverlauf"><div class="section-label">Kontaktverlauf (${k.kontakte.length})</div>${k.kontakte.slice().reverse().map(e=>`<div class="kontakt-eintrag"><div class="kontakt-header"><span class="kontakt-typ">${e.typ}</span><span class="kontakt-datum">${formatDatum(e.datum)}</span></div><div class="kontakt-notiz">${e.notiz||'–'}</div></div>`).join('')}</div>`:`<p style="color:var(--text-muted);font-size:13px;margin-bottom:14px;">Noch kein Kontakt erfasst.</p>`;
+    const offeneAufgaben=aufgabenProKunde(k.id);
+    const aufgabenHtml=`<div class="divider"></div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;"><div class="section-label" style="margin:0;">Offene Aufgaben (${offeneAufgaben.length})</div><button class="btn btn-ghost btn-xs" onclick="openAufgabeNeu('${k.id}')">+ Aufgabe</button></div>${offeneAufgaben.length?offeneAufgaben.map(a=>aufgabeCardHtml(a,true)).join(''):'<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Keine offenen Aufgaben.</p>'}`;
+
+    bodyHtml = tHtml+eaHtml+produktHtml+beratungHtml+lfHtml+waHtml+'<div class="divider"></div>'+verlaufHtml+aufgabenHtml+auftraegeProfilHtml(k.id);
   }
 
-  let lfKey=k.aktuellerSchritt;
-  if(lfKey==='erstanruf'&&k.pfad==='B')lfKey='erstanruf_nachbedarf';
-  const lf=LEITFAEDEN[lfKey];
-  const lfHtml=lf?`<div class="leitfaden-box"><div class="leitfaden-title">💬 ${lf.titel}</div><div class="leitfaden-intro">${lf.intro}</div><ul class="leitfaden-fragen">${lf.fragen.map(f=>`<li>${f}</li>`).join('')}</ul></div>`:'';
-
-  // Beratungserfassung
-  const beratungHtml = beratungProfilHtml(k);
-  const waHtml=k.aktuellerSchritt==='empfehlung'?`<div class="wa-box"><div class="wa-title">📱 WhatsApp-Empfehlung senden</div><p style="font-size:13px;color:#b8b09e;margin-bottom:12px;">Der Kunde ist bereit. Jetzt ist der richtige Moment.</p><button class="btn btn-wa btn-sm" onclick="openWA('${k.id}')">WhatsApp öffnen</button></div>`:'';
-
-  const verlaufHtml=(k.kontakte&&k.kontakte.length)?`<div class="kontaktverlauf"><div class="section-label">Kontaktverlauf (${k.kontakte.length})</div>${k.kontakte.slice().reverse().map(e=>`<div class="kontakt-eintrag"><div class="kontakt-header"><span class="kontakt-typ">${e.typ}</span><span class="kontakt-datum">${formatDatum(e.datum)}</span></div><div class="kontakt-notiz">${e.notiz||'–'}</div></div>`).join('')}</div>`:`<p style="color:var(--text-muted);font-size:13px;margin-bottom:14px;">Noch kein Kontakt erfasst.</p>`;
-
-  // Offene Aufgaben zu diesem Kunden
-  const offeneAufgaben = aufgabenProKunde(k.id);
-  const aufgabenHtml = `<div class="divider"></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-      <div class="section-label" style="margin:0;">Offene Aufgaben (${offeneAufgaben.length})</div>
-      <button class="btn btn-ghost btn-xs" onclick="openAufgabeNeu('${k.id}')">+ Aufgabe</button>
-    </div>
-    ${offeneAufgaben.length
-      ? offeneAufgaben.map(a => aufgabeCardHtml(a, true)).join('')
-      : `<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Keine offenen Aufgaben.</p>`}`;
-
-  document.getElementById('profilBody').innerHTML=tHtml+eaHtml+produktHtml+beratungHtml+lfHtml+waHtml+'<div class="divider"></div>'+verlaufHtml+aufgabenHtml+auftraegeProfilHtml(k.id);
+  document.getElementById('profilBody').innerHTML = bodyHtml;
   document.getElementById('profilFooter').innerHTML=`
     <button class="btn btn-ghost" onclick="closeOverlay('profilOverlay')">Schließen</button>
-    ${k.status!=='abgeschlossen'?`
-      <button class="btn btn-ghost" onclick="kundeArchivieren('${k.id}')" style="border-color:rgba(245,241,230,0.2);color:var(--text-muted);">
-        📦 Archivieren
-      </button>` : `
-      <button class="btn btn-primary btn-sm" onclick="kundeReaktivieren('${k.id}');closeOverlay('profilOverlay')">
-        Reaktivieren
-      </button>`}
+    ${k.status!=='abgeschlossen'?`<button class="btn btn-ghost" onclick="kundeArchivieren('${k.id}')" style="border-color:rgba(245,241,230,0.2);color:var(--text-muted);">📦 Archivieren</button>`
+    :`<button class="btn btn-primary btn-sm" onclick="kundeReaktivieren('${k.id}');closeOverlay('profilOverlay')">Reaktivieren</button>`}
     <button class="btn btn-ghost" onclick="openBearbeiten('${k.id}')" style="border-color:rgba(123,131,50,0.4);color:var(--accent-light);">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       Bearbeiten
     </button>
-    ${k.status!=='abgeschlossen'?`<button class="btn btn-primary" onclick="openGespraech('${k.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>Gespräch erfassen</button>`:''}`;
+    ${k.status!=='abgeschlossen'&&!istGewerbe?`<button class="btn btn-primary" onclick="openGespraech('${k.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>Gespräch erfassen</button>`:''}`;
   document.getElementById('profilOverlay').classList.add('open');
 }
 
@@ -3315,54 +3380,86 @@ function openWA(id){
 // NEUER KUNDE
 // ============================================================
 
-async function kundeAnlegen(){
-  const name1=document.getElementById('nk-name1').value.trim();
-  const name2=document.getElementById('nk-name2').value.trim();
-  const kaufdatum=document.getElementById('nk-kaufdatum').value;
-  const lieferdatum=document.getElementById('nk-lieferdatum').value;
-  if(!name1||!kaufdatum){alert('Bitte Name (Person 1) und Kaufdatum ausfüllen.');return;}
+// ============================================================
+// WEICHE NEUKUNDE
+// ============================================================
 
-  function leseProdukte(prefix){
-    return {
-      ...Object.fromEntries(FELDER_REIHENFOLGE.map(f=>[f,{name:document.getElementById(`${prefix}-${f}`)?.value||'',quelle:quellenState[prefix][f]}])),
-      breite: document.getElementById(`${prefix}-breite`)?.value || '',
-      laenge: document.getElementById(`${prefix}-laenge`)?.value || '',
-      partnermatratze: document.getElementById(`${prefix}-partnermatratze`)?.checked || false,
+function zeigeNkWeiche() {
+  document.getElementById('nk-weiche').style.display = 'block';
+  document.getElementById('nk-privat-form').style.display = 'none';
+  document.getElementById('nk-gewerbe-form').style.display = 'none';
+}
+
+function zeigeNkFormular(typ) {
+  document.getElementById('nk-weiche').style.display = 'none';
+  document.getElementById('nk-privat-form').style.display = typ==='privat' ? 'block' : 'none';
+  document.getElementById('nk-gewerbe-form').style.display = typ==='gewerbe' ? 'block' : 'none';
+  // Datum vorbelegen
+  const heute = new Date().toISOString().slice(0,10);
+  if(typ==='privat' && document.getElementById('nk-kaufdatum')) document.getElementById('nk-kaufdatum').value = heute;
+  if(typ==='gewerbe' && document.getElementById('nk-gew-datum')) document.getElementById('nk-gew-datum').value = heute;
+}
+
+async function kundeAnlegen(typ='privat') {
+  if(typ === 'privat') {
+    const name1 = document.getElementById('nk-name1').value.trim();
+    const kaufdatum = document.getElementById('nk-kaufdatum').value;
+    if(!name1 || !kaufdatum) { alert('Bitte Name und Erstkontakt-Datum ausfüllen.'); return; }
+
+    const neuerKunde = {
+      id: genId(), typ: 'privat',
+      name1, name2: document.getElementById('nk-name2').value.trim(),
+      tel1: document.getElementById('nk-tel1').value.trim(),
+      tel2: document.getElementById('nk-tel2').value.trim(),
+      wa1: document.getElementById('nk-wa1').value,
+      wa2: document.getElementById('nk-wa2').value,
+      berater: document.getElementById('nk-berater').value,
+      kaufdatum, lieferdatum: '',
+      person1: {matratze:{name:'',quelle:'keiten'},lattenrost:{name:'',quelle:'keiten'},kissen:{name:'',quelle:'keiten'},bett:{name:'',quelle:'keiten'},breite:'90',laenge:'200',partnermatratze:false},
+      person2: null,
+      pfad:'A', status:'aktiv', aktuellerSchritt:'erstanruf', ampel:'gelb',
+      kontakte: [],
+      naechsterKontakt: dateAdd(42),
+      beratung: {},
     };
+    const notiz = document.getElementById('nk-notiz').value.trim();
+    if(notiz) neuerKunde.kontakte.push({typ:'Erstkontakt',datum:kaufdatum,ergebnis:'notiz',notiz});
+
+    KUNDEN.push(neuerKunde);
+    await speichereKundeFirestore(neuerKunde);
+
+    // Felder leeren
+    ['nk-name1','nk-name2','nk-tel1','nk-tel2','nk-notiz'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+
+  } else {
+    const firma = document.getElementById('nk-firma').value.trim();
+    const datum = document.getElementById('nk-gew-datum').value;
+    if(!firma) { alert('Bitte Firma / Kundenname ausfüllen.'); return; }
+
+    const neuerKunde = {
+      id: genId(), typ: 'gewerbe',
+      name1: firma,
+      name2: document.getElementById('nk-ansprechpartner').value.trim(),
+      tel1: document.getElementById('nk-gew-tel').value.trim(),
+      tel2: '', wa1: document.getElementById('nk-gew-wa').value, wa2: 'wa',
+      email: document.getElementById('nk-email').value.trim(),
+      berater: document.getElementById('nk-gew-berater').value,
+      kaufdatum: datum, lieferdatum: '',
+      person1: null, person2: null,
+      pfad:'A', status:'aktiv', aktuellerSchritt:'gewerbe', ampel:'gelb',
+      kontakte: [],
+      naechsterKontakt: '',
+      beratung: {},
+    };
+    const notiz = document.getElementById('nk-gew-notiz').value.trim();
+    if(notiz) neuerKunde.kontakte.push({typ:'Erstkontakt',datum:datum||new Date().toISOString().slice(0,10),ergebnis:'notiz',notiz});
+
+    KUNDEN.push(neuerKunde);
+    await speichereKundeFirestore(neuerKunde);
+
+    ['nk-firma','nk-ansprechpartner','nk-gew-tel','nk-email','nk-gew-notiz'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
   }
 
-  const neuerKunde={
-    id:genId(),name1,name2,
-    tel1:document.getElementById('nk-tel1').value.trim(),
-    tel2:document.getElementById('nk-tel2').value.trim(),
-    wa1:document.getElementById('nk-wa1').value,
-    wa2:document.getElementById('nk-wa2').value,
-    kaufdatum,lieferdatum,
-    berater:document.getElementById('nk-berater').value,
-    person1:leseProdukte('p1'),
-    person2:name2?leseProdukte('p2'):null,
-    pfad:'A',status:'aktiv',aktuellerSchritt:'erstanruf',ampel:'gelb',
-    kontakte:[],
-    naechsterKontakt:lieferdatum?dateNaechster(42,lieferdatum):dateAdd(42)
-  };
-
-  const notiz=document.getElementById('nk-notiz').value.trim();
-  if(notiz)neuerKunde.kontakte.push({typ:'Anmerkung bei Anlage',datum:new Date().toISOString().slice(0,10),ergebnis:'notiz',notiz});
-
-  KUNDEN.push(neuerKunde);
-  await speichereKundeFirestore(neuerKunde);
-
-  document.getElementById('nk-name1').value='';
-  document.getElementById('nk-name2').value='';
-  document.getElementById('nk-tel1').value='';
-  document.getElementById('nk-tel2').value='';
-  document.getElementById('nk-kaufdatum').value='';
-  document.getElementById('nk-lieferdatum').value='';
-  document.getElementById('nk-notiz').value='';
-  switchTab(0);
-  document.getElementById('tab-p2').style.opacity='0.4';
-  document.getElementById('tab-p2').style.pointerEvents='none';
-  document.getElementById('tab-p2').textContent='🛏 Person 2';
   showView('kundenliste');
 }
 
@@ -3454,6 +3551,7 @@ Object.assign(window, {
   openBearbeiten, bearbeitenSpeichern, setQuelleB,
   kundeArchivieren, kundeReaktivieren, setWaFlag,
   openWA, kundeAnlegen, bestaetigeReset, closeOverlay, overlayClick,
+  zeigeNkWeiche, zeigeNkFormular,
   switchTab, togglePerson2, setQuelle, toggleAddPanel,
   addEintragFromField, verwaltungHinzufuegen, loescheEintrag,
   renderAufgaben, openAufgabeNeu, openAufgabeBearbeiten,
