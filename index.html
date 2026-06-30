@@ -714,6 +714,11 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
 
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:11px 14px;background:rgba(158,208,78,0.08);border:1px solid rgba(158,208,78,0.25);border-radius:8px;margin-bottom:16px;">
+          <input type="checkbox" id="nk-bestandskunde" style="width:17px;height:17px;accent-color:var(--accent);cursor:pointer;" onchange="toggleBestandskunde()" />
+          <span style="font-size:13px;color:#ddd8cc;">✓ Bestandskunde – hat bereits gekauft <span style="color:var(--text-muted);font-size:11px;">(Vorqualifizierung &amp; Beratung überspringen, direkt zu Kauf erfassen)</span></span>
+        </label>
+
         <div class="form-grid" style="margin-bottom:14px;">
           <div class="form-row">
             <label class="form-label">Berater</label>
@@ -725,7 +730,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </select>
           </div>
           <div class="form-row">
-            <label class="form-label">Datum der Kontaktaufnahme</label>
+            <label class="form-label" id="nk-datum-label">Datum der Kontaktaufnahme</label>
             <input class="form-input" type="date" id="nk-kaufdatum" />
           </div>
         </div>
@@ -733,7 +738,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <label class="form-label">Erste Notiz (optional)</label>
           <textarea class="form-textarea" id="nk-notiz" placeholder="Wie hat der Kunde Kontakt aufgenommen? Was war der erste Eindruck?"></textarea>
         </div>
-        <div class="hint" style="margin-bottom:12px;">💡 Kaufdatum, Produkte und Beratungsdetails werden nach dem Kauf im Kundenprofil erfasst.</div>
+        <div class="hint" style="margin-bottom:12px;" id="nk-hinweistext">💡 Kaufdatum, Produkte und Beratungsdetails werden nach dem Kauf im Kundenprofil erfasst.</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn btn-primary" onclick="kundeAnlegen('privat')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
@@ -4407,6 +4412,19 @@ function zeigeNkFormular(typ) {
   if(typ==='gewerbe' && document.getElementById('nk-gew-datum')) document.getElementById('nk-gew-datum').value = heute;
 }
 
+function toggleBestandskunde() {
+  const istBestandskunde = document.getElementById('nk-bestandskunde')?.checked;
+  const label = document.getElementById('nk-datum-label');
+  const hinweis = document.getElementById('nk-hinweistext');
+  if(istBestandskunde) {
+    if(label) label.textContent = 'Kaufdatum';
+    if(hinweis) hinweis.innerHTML = '✓ Nach dem Anlegen öffnet sich direkt das Formular für Kaufdatum, Lieferdatum und Produkte.';
+  } else {
+    if(label) label.textContent = 'Datum der Kontaktaufnahme';
+    if(hinweis) hinweis.innerHTML = '💡 Kaufdatum, Produkte und Beratungsdetails werden nach dem Kauf im Kundenprofil erfasst.';
+  }
+}
+
 async function kundeAnlegen(typ='privat') {
   if(typ === 'privat') {
     const vorname1 = document.getElementById('nk-vorname1')?.value.trim() || '';
@@ -4415,9 +4433,11 @@ async function kundeAnlegen(typ='privat') {
     const vorname2 = document.getElementById('nk-vorname2')?.value.trim() || '';
     const nachname2 = document.getElementById('nk-nachname2')?.value.trim() || '';
     const anrede2 = document.getElementById('nk-anrede2')?.value || '';
-    const kaufdatum = document.getElementById('nk-kaufdatum')?.value;
+    const datum = document.getElementById('nk-kaufdatum')?.value;
+    const istBestandskunde = document.getElementById('nk-bestandskunde')?.checked || false;
 
     if(!vorname1 && !nachname1) { alert('Bitte mindestens Vorname oder Nachname ausfüllen.'); return; }
+    if(!datum) { alert('Bitte ein Datum eintragen.'); return; }
 
     const name1 = [vorname1, nachname1].filter(Boolean).join(' ');
     const name2 = [vorname2, nachname2].filter(Boolean).join(' ');
@@ -4431,18 +4451,21 @@ async function kundeAnlegen(typ='privat') {
       wa1: document.getElementById('nk-wa1').value,
       wa2: document.getElementById('nk-wa2').value,
       berater: document.getElementById('nk-berater').value,
-      erstkontaktDatum: kaufdatum,
-      kaufdatum: '', lieferdatum: '',
-      kundeStufe: 'interessent',
+      erstkontaktDatum: istBestandskunde ? '' : datum,
+      kaufdatum: istBestandskunde ? datum : '',
+      lieferdatum: '',
+      kundeStufe: istBestandskunde ? 'gekauft' : 'interessent',
       person1: null, person2: null,
-      pfad:'A', status:'aktiv', aktuellerSchritt:'interessent', ampel:'gelb',
+      pfad:'A', status:'aktiv',
+      aktuellerSchritt: istBestandskunde ? 'erstanruf' : 'interessent',
+      ampel:'gelb',
       kontakte: [],
-      naechsterKontakt: '',
+      naechsterKontakt: istBestandskunde ? dateAdd(42) : '',
       beratung: {},
       vorqualifizierung: {},
     };
     const notiz = document.getElementById('nk-notiz').value.trim();
-    if(notiz) neuerKunde.kontakte.push({typ:'Erstkontakt',datum:kaufdatum,ergebnis:'notiz',notiz});
+    if(notiz) neuerKunde.kontakte.push({typ:'Sonstiges',kanal:'sonstiges',richtung:'intern',vonWem:neuerKunde.berater,datum,ergebnis:'info',notiz});
 
     KUNDEN.push(neuerKunde);
     await speichereKundeFirestore(neuerKunde);
@@ -4451,6 +4474,15 @@ async function kundeAnlegen(typ='privat') {
     ['nk-vorname1','nk-nachname1','nk-vorname2','nk-nachname2','nk-tel1','nk-tel2','nk-notiz'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
     document.getElementById('nk-anrede1').value='';
     document.getElementById('nk-anrede2').value='';
+    document.getElementById('nk-bestandskunde').checked=false;
+    toggleBestandskunde();
+
+    // Bei Bestandskunde direkt Kauf-erfassen-Formular öffnen
+    if(istBestandskunde) {
+      showView('kundenliste');
+      setTimeout(() => openKaufErfassen(neuerKunde.id), 150);
+      return;
+    }
 
   } else {
     const firma = document.getElementById('nk-firma').value.trim();
@@ -4566,7 +4598,7 @@ Object.assign(window, {
   openBearbeiten, bearbeitenSpeichern, setQuelleB,
   kundeArchivieren, kundeReaktivieren, setWaFlag,
   openWA, kundeAnlegen, bestaetigeReset, closeOverlay, overlayClick,
-  zeigeNkWeiche, zeigeNkFormular,
+  zeigeNkWeiche, zeigeNkFormular, toggleBestandskunde,
   switchTab, togglePerson2, setQuelle, toggleAddPanel,
   addEintragFromField, verwaltungHinzufuegen, loescheEintrag,
   renderAufgaben, openAufgabeNeu, openAufgabeBearbeiten,
