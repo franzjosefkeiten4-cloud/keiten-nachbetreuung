@@ -9,6 +9,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCOqO0MGc0xyTo31NsayCL8TYHmxMnNbcU",
@@ -22,12 +23,16 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 const KUNDEN_COL = collection(db, 'kunden');
 const AUFGABEN_COL = collection(db, 'aufgaben');
 const AUFTRAEGE_COL = collection(db, 'auftraege');
 
 // Globale Firebase-Funktionen die vom restlichen Code genutzt werden
 window._db = db;
+window._auth = auth;
+window._signIn = signInWithEmailAndPassword;
+window._signOut = signOut;
 window._kundenCol = KUNDEN_COL;
 window._aufgabenCol = AUFGABEN_COL;
 window._auftraegeCol = AUFTRAEGE_COL;
@@ -38,9 +43,14 @@ window._getDocs = getDocs;
 window._onSnapshot = onSnapshot;
 window._firebaseReady = true;
 
-// Echtzeit-Listener starten sobald DOM bereit
+// Auth-Status überwachen
+onAuthStateChanged(auth, (user) => {
+  if(window.handleAuthChange) window.handleAuthChange(user);
+});
+
+// Echtzeit-Listener starten sobald DOM bereit (nur nach Login)
 document.addEventListener('DOMContentLoaded', () => {
-  if(window.startFirebaseListener) window.startFirebaseListener();
+  if(window.initLoginScreen) window.initLoginScreen();
 });
 </script>
 <style>
@@ -503,6 +513,35 @@ document.addEventListener('DOMContentLoaded', () => {
 </head>
 <body>
 
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" style="display:flex;min-height:100vh;align-items:center;justify-content:center;padding:20px;background:var(--bg);">
+  <div style="max-width:380px;width:100%;">
+    <div style="text-align:center;margin-bottom:32px;">
+      <div style="width:56px;height:56px;background:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+        <svg viewBox="0 0 24 24" style="width:32px;height:32px;fill:#F5F1E6;"><path d="M3 20h18v-2H3v2zm1-5h16v-2H4v2zM3 7v6l3-2 3 2 3-2 3 2 3-2V7l-3 2-3-2-3 2-3-2-3 2z"/></svg>
+      </div>
+      <div style="font-family:'Playfair Display',serif;font-size:24px;font-weight:600;color:#F5F1E6;">Keiten</div>
+      <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-top:2px;">Nachbetreuung · Interner Bereich</div>
+    </div>
+    <div style="background:rgba(245,241,230,0.05);border:1px solid var(--border);border-radius:14px;padding:28px 24px;">
+      <div class="form-row">
+        <label class="form-label">E-Mail</label>
+        <input class="form-input" type="email" id="login-email" placeholder="name@schreinerei-keiten.de" onkeydown="if(event.key==='Enter')document.getElementById('login-passwort').focus()" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">Passwort</label>
+        <input class="form-input" type="password" id="login-passwort" placeholder="••••••••" onkeydown="if(event.key==='Enter')loginVersuchen()" />
+      </div>
+      <div id="login-fehler" style="display:none;background:rgba(180,60,40,0.15);border:1px solid rgba(180,60,40,0.35);border-radius:7px;padding:9px 12px;font-size:12px;color:#f08070;margin-bottom:14px;"></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="loginVersuchen()" id="login-btn">Anmelden</button>
+    </div>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--text-muted);">Nur für registrierte Keiten-Mitarbeiter</div>
+  </div>
+</div>
+
+<!-- APP CONTAINER (erst nach Login sichtbar) -->
+<div id="appContainer" style="display:none;">
+
 <header>
   <div class="logo-area">
     <div class="logo-mark">
@@ -514,6 +553,7 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>
   </div>
   <span id="headerDatum" class="info-chip"></span>
+  <span id="eingeloggterNutzer" class="info-chip" style="margin-left:8px;cursor:pointer;" onclick="logout()" title="Klicken zum Abmelden">👤 –</span>
 </header>
 
 <nav>
@@ -986,7 +1026,90 @@ document.addEventListener('DOMContentLoaded', () => {
   </div>
 </div>
 
+</div><!-- /appContainer -->
+
 <script type="module">
+// ============================================================
+// AUTHENTIFIZIERUNG
+// ============================================================
+
+const MITARBEITER_NAMEN = {
+  'info@schreinerei-keiten.de': 'Franz-Josef',
+  'franz-josef@schreinerei-keiten.de': 'Franz-Josef',
+  'viktor@schreinerei-keiten.de': 'Viktor',
+  'elias@schreinerei-keiten.de': 'Elias',
+  'samuel@schreinerei-keiten.de': 'Samuel',
+};
+
+let _aktuellerNutzer = null;
+
+window.loginVersuchen = async function() {
+  const email = document.getElementById('login-email').value.trim();
+  const passwort = document.getElementById('login-passwort').value;
+  const fehlerBox = document.getElementById('login-fehler');
+  const btn = document.getElementById('login-btn');
+
+  if(!email || !passwort) {
+    fehlerBox.textContent = 'Bitte E-Mail und Passwort eingeben.';
+    fehlerBox.style.display = 'block';
+    return;
+  }
+
+  btn.textContent = 'Anmelden ...';
+  btn.disabled = true;
+  fehlerBox.style.display = 'none';
+
+  try {
+    await window._signIn(window._auth, email, passwort);
+    // onAuthStateChanged übernimmt den Rest
+  } catch(err) {
+    let msg = 'Anmeldung fehlgeschlagen. Bitte E-Mail und Passwort prüfen.';
+    if(err.code === 'auth/too-many-requests') msg = 'Zu viele Versuche. Bitte kurz warten.';
+    fehlerBox.textContent = msg;
+    fehlerBox.style.display = 'block';
+    btn.textContent = 'Anmelden';
+    btn.disabled = false;
+  }
+};
+
+window.logout = async function() {
+  if(!confirm('Wirklich abmelden?')) return;
+  await window._signOut(window._auth);
+};
+
+window.handleAuthChange = function(user) {
+  _aktuellerNutzer = user;
+  const loginScreen = document.getElementById('loginScreen');
+  const appContainer = document.getElementById('appContainer');
+  const btn = document.getElementById('login-btn');
+
+  if(user) {
+    // Eingeloggt
+    loginScreen.style.display = 'none';
+    appContainer.style.display = 'block';
+    if(btn) { btn.textContent='Anmelden'; btn.disabled=false; }
+
+    // Aktiven Mitarbeiternamen anzeigen
+    const chip = document.getElementById('eingeloggterNutzer');
+    const name = MITARBEITER_NAMEN[user.email] || user.email;
+    if(chip) chip.textContent = `👤 ${name}`;
+
+    // Firebase-Listener erst jetzt starten
+    if(window.startFirebaseListener) window.startFirebaseListener();
+  } else {
+    // Ausgeloggt
+    loginScreen.style.display = 'flex';
+    appContainer.style.display = 'none';
+    document.getElementById('login-email').value = '';
+    document.getElementById('login-passwort').value = '';
+  }
+};
+
+window.initLoginScreen = function() {
+  // Wird von Firebase-Script aufgerufen sobald DOM bereit ist
+  // Auth-State wird automatisch via onAuthStateChanged geprüft
+};
+
 // ============================================================
 // STAMM-LISTEN
 // ============================================================
@@ -4328,9 +4451,6 @@ function overlayClick(e){if(e.target.classList.contains('overlay'))e.target.clas
 
 function init(){
   document.getElementById('headerDatum').textContent=new Date().toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'});
-  if(window._firebaseReady && window.startFirebaseListener) {
-    window.startFirebaseListener();
-  }
   renderErinnerungBanner();
   renderKundenliste();
 }
