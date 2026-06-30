@@ -10,6 +10,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCOqO0MGc0xyTo31NsayCL8TYHmxMnNbcU",
@@ -24,6 +25,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const storage = getStorage(app);
 const KUNDEN_COL = collection(db, 'kunden');
 const AUFGABEN_COL = collection(db, 'aufgaben');
 const AUFTRAEGE_COL = collection(db, 'auftraege');
@@ -33,6 +35,11 @@ window._db = db;
 window._auth = auth;
 window._signIn = signInWithEmailAndPassword;
 window._signOut = signOut;
+window._storage = storage;
+window._storageRef = ref;
+window._uploadBytes = uploadBytes;
+window._getDownloadURL = getDownloadURL;
+window._deleteObject = deleteObject;
 window._kundenCol = KUNDEN_COL;
 window._aufgabenCol = AUFGABEN_COL;
 window._auftraegeCol = AUFTRAEGE_COL;
@@ -350,6 +357,22 @@ document.addEventListener('DOMContentLoaded', () => {
   .erg-nachbedarf { background:rgba(180,60,40,0.2); color:#f08070; }
   .erg-notiz,.erg-info { background:rgba(245,241,230,0.07); color:var(--text-muted); }
   .zeitstrahl-inhalt { font-size:13px; color:#ddd8cc; line-height:1.5; white-space:pre-wrap; }
+
+  /* ANHÄNGE */
+  .zeitstrahl-anhang { margin-top:8px; }
+  .zeitstrahl-anhang img { max-width:100%; max-height:220px; border-radius:8px; cursor:pointer; display:block; border:1px solid var(--border); }
+  .zeitstrahl-anhang video { max-width:100%; max-height:260px; border-radius:8px; display:block; border:1px solid var(--border); background:#000; }
+  .upload-zone {
+    border: 2px dashed rgba(245,241,230,0.2);
+    border-radius: 10px; padding: 18px; text-align: center;
+    cursor: pointer; transition: all 0.2s; margin-bottom: 10px;
+  }
+  .upload-zone:hover { border-color: rgba(123,131,50,0.5); background: rgba(123,131,50,0.06); }
+  .upload-zone.dragover { border-color: var(--accent); background: rgba(123,131,50,0.12); }
+  .upload-preview { display:flex; align-items:center; gap:10px; background:rgba(245,241,230,0.05); border:1px solid var(--border); border-radius:8px; padding:8px 10px; margin-bottom:10px; }
+  .upload-preview img, .upload-preview video { width:50px; height:50px; object-fit:cover; border-radius:6px; }
+  .upload-progress { height:4px; background:rgba(245,241,230,0.1); border-radius:2px; overflow:hidden; margin-top:6px; }
+  .upload-progress-bar { height:100%; background:var(--accent); transition:width 0.2s; }
 
   /* AUFTRÄGE */
   .auftrag-card {
@@ -3752,6 +3775,11 @@ function renderZeitstrahl(k) {
           <button class="eigene-eintrag-del" style="margin-left:4px;font-size:15px;" onclick="zeitstrahlEintragLoeschen('${k.id}',${origIdx})" title="Eintrag löschen">✕</button>
         </div>
         ${e.notiz ? `<div class="zeitstrahl-inhalt">${e.notiz}</div>` : ''}
+        ${e.anhangUrl ? `<div class="zeitstrahl-anhang">
+          ${e.anhangTyp==='bild'
+            ? `<img src="${e.anhangUrl}" onclick="window.open('${e.anhangUrl}','_blank')" alt="Anhang" />`
+            : `<video src="${e.anhangUrl}" controls preload="metadata"></video>`}
+        </div>` : ''}
       </div>`;
     }).join('')}
   </div>` : `<p style="color:var(--text-muted);font-size:13px;margin-bottom:14px;">Noch kein Eintrag vorhanden.</p>`}`;
@@ -3759,6 +3787,17 @@ function renderZeitstrahl(k) {
 
 async function zeitstrahlEintragLoeschen(kundeId, index) {
   if(!confirm('Diesen Eintrag wirklich löschen?')) return;
+  const k = kundeById(kundeId);
+  const eintrag = k?.kontakte?.[index];
+
+  // Storage-Datei mitlöschen falls vorhanden
+  if(eintrag?.anhangPfad) {
+    try {
+      const fileRef = window._storageRef(window._storage, eintrag.anhangPfad);
+      await window._deleteObject(fileRef);
+    } catch(e) { console.warn('Anhang konnte nicht gelöscht werden:', e); }
+  }
+
   await kundeUpdate(kundeId, k => {
     const neueKontakte = [...(k.kontakte||[])];
     neueKontakte.splice(index, 1);
@@ -3772,6 +3811,7 @@ function openSchnelleintrag(id) {
   const k = kundeById(id); if(!k) return;
   document.getElementById('profilOverlay').classList.remove('open');
   document.getElementById('schnellSubtitle').textContent = k.name1 + (k.name2 ? ' & '+k.name2 : '');
+  _seAnhang = null; // Reset
 
   document.getElementById('schnellBody').innerHTML = `
     <div class="form-grid" style="margin-bottom:12px;">
@@ -3821,6 +3861,16 @@ function openSchnelleintrag(id) {
       <textarea class="form-textarea" id="se-inhalt" placeholder="Was wurde gesagt, geschrieben, besprochen?" style="min-height:100px;"></textarea>
     </div>
     <div class="form-row">
+      <label class="form-label">Foto oder Video anhängen (optional, max. 3 Min.)</label>
+      <div class="upload-zone" id="se-upload-zone" onclick="document.getElementById('se-file-input').click()">
+        <div style="font-size:24px;margin-bottom:6px;">📎</div>
+        <div style="font-size:13px;color:#ddd8cc;">Klicken zum Auswählen – Foto oder Video</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">JPG, PNG, MP4, MOV</div>
+      </div>
+      <input type="file" id="se-file-input" accept="image/*,video/*" style="display:none;" onchange="seFileAusgewaehlt(this.files[0])" />
+      <div id="se-upload-vorschau"></div>
+    </div>
+    <div class="form-row">
       <label class="form-label">Ergebnis (optional)</label>
       <select class="form-select" id="se-ergebnis">
         <option value="info">– nur Notiz / Info –</option>
@@ -3832,7 +3882,7 @@ function openSchnelleintrag(id) {
 
   document.getElementById('schnellFooter').innerHTML = `
     <button class="btn btn-ghost" onclick="closeOverlay('schnellOverlay');openProfil('${id}')">Abbrechen</button>
-    <button class="btn btn-primary" onclick="schnellEintragSpeichern('${id}')">
+    <button class="btn btn-primary" id="se-speichern-btn" onclick="schnellEintragSpeichern('${id}')">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
       Eintrag speichern
     </button>`;
@@ -3840,9 +3890,41 @@ function openSchnelleintrag(id) {
   document.getElementById('schnellOverlay').classList.add('open');
 }
 
+// Anhang-State für aktuellen Schnelleintrag
+let _seAnhang = null; // { file, typ: 'bild'|'video', previewUrl }
+
+function seFileAusgewaehlt(file) {
+  if(!file) return;
+  const istBild = file.type.startsWith('image/');
+  const istVideo = file.type.startsWith('video/');
+  if(!istBild && !istVideo) { alert('Bitte ein Foto oder Video auswählen.'); return; }
+
+  // Größencheck: grobe Schätzung, 3 Min Video bei normaler Handy-Qualität ~ 50-150MB, wir erlauben bis 200MB
+  if(file.size > 200*1024*1024) { alert('Datei zu groß (max. 200MB). Bitte ein kürzeres Video wählen.'); return; }
+
+  _seAnhang = { file, typ: istBild?'bild':'video' };
+  const url = URL.createObjectURL(file);
+  const vorschau = document.getElementById('se-upload-vorschau');
+  vorschau.innerHTML = `
+    <div class="upload-preview">
+      ${istBild ? `<img src="${url}" />` : `<video src="${url}" muted></video>`}
+      <div style="flex:1;">
+        <div style="font-size:12px;color:#F5F1E6;">${file.name}</div>
+        <div style="font-size:11px;color:var(--text-muted);">${(file.size/1024/1024).toFixed(1)} MB</div>
+      </div>
+      <button class="btn btn-ghost btn-xs" style="color:#f08070;" onclick="seAnhangEntfernen()">✕</button>
+    </div>`;
+}
+
+function seAnhangEntfernen() {
+  _seAnhang = null;
+  document.getElementById('se-upload-vorschau').innerHTML = '';
+  document.getElementById('se-file-input').value = '';
+}
+
 async function schnellEintragSpeichern(id) {
   const inhalt = document.getElementById('se-inhalt')?.value.trim();
-  if(!inhalt) { alert('Bitte einen Inhalt eingeben.'); return; }
+  if(!inhalt && !_seAnhang) { alert('Bitte einen Inhalt eingeben oder eine Datei anhängen.'); return; }
 
   const richtung = document.querySelector('input[name="se-richtung"]:checked')?.value || 'ausgehend';
   const k = kundeById(id);
@@ -3856,8 +3938,28 @@ async function schnellEintragSpeichern(id) {
     richtung,
     vonWem,
     ergebnis: document.getElementById('se-ergebnis')?.value || 'info',
-    notiz: inhalt,
+    notiz: inhalt || '',
   };
+
+  // Upload falls Anhang vorhanden
+  if(_seAnhang) {
+    const btn = document.getElementById('se-speichern-btn');
+    btn.disabled = true;
+    btn.textContent = 'Lade hoch ...';
+    try {
+      const ext = _seAnhang.file.name.split('.').pop();
+      const pfad = `anhaenge/${id}/${Date.now()}.${ext}`;
+      const fileRef = window._storageRef(window._storage, pfad);
+      await window._uploadBytes(fileRef, _seAnhang.file);
+      const url = await window._getDownloadURL(fileRef);
+      eintrag.anhangUrl = url;
+      eintrag.anhangTyp = _seAnhang.typ;
+      eintrag.anhangPfad = pfad;
+    } catch(err) {
+      console.error('Upload fehlgeschlagen:', err);
+      alert('Hochladen fehlgeschlagen. Eintrag wird ohne Anhang gespeichert.');
+    }
+  }
 
   await kundeUpdate(id, k => ({
     ...k,
@@ -3869,6 +3971,7 @@ async function schnellEintragSpeichern(id) {
     } : {}),
   }));
 
+  _seAnhang = null;
   closeOverlay('schnellOverlay');
   openProfil(id);
   renderKundenliste();
@@ -4472,6 +4575,7 @@ Object.assign(window, {
   angebotPositionHinzufuegen, angebotPositionEntfernen, angebotStatusAendern,
   angebotPositionLoeschen,
   openSchnelleintrag, schnellEintragSpeichern, zeitstrahlEintragLoeschen,
+  seFileAusgewaehlt, seAnhangEntfernen,
   openKaufErfassen, kaufSpeichern, openLieferdatumErfassen,
   setQuelleKf,
   renderAuftraege, openAuftragNeu, openAuftragDetail, openAuftragBearbeiten,
