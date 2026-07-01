@@ -659,7 +659,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <option value="">– ohne –</option>
                 <option value="Herr">Herr</option>
                 <option value="Frau">Frau</option>
-                <option value="Divers">Divers</option>
+                
               </select>
             </div>
             <div class="form-row">
@@ -691,7 +691,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <option value="">– ohne –</option>
                 <option value="Herr">Herr</option>
                 <option value="Frau">Frau</option>
-                <option value="Divers">Divers</option>
+                
               </select>
             </div>
             <div class="form-row">
@@ -3573,7 +3573,7 @@ function openBearbeiten(id) {
           <label class="form-label">Anrede Person 1</label>
           <select class="form-select" id="b-anrede1">
             <option value="">– ohne –</option>
-            ${['Herr','Frau','Divers'].map(a=>`<option ${(k.anrede1||''===a)?'selected':''}>${a}</option>`).join('')}
+            ${['Herr','Frau'].map(a=>`<option ${(k.anrede1||''===a)?'selected':''}>${a}</option>`).join('')}
           </select>
         </div>
         <div class="form-row">
@@ -3588,7 +3588,7 @@ function openBearbeiten(id) {
           <label class="form-label">Anrede Person 2</label>
           <select class="form-select" id="b-anrede2">
             <option value="">– ohne –</option>
-            ${['Herr','Frau','Divers'].map(a=>`<option ${(k.anrede2||''===a)?'selected':''}>${a}</option>`).join('')}
+            ${['Herr','Frau'].map(a=>`<option ${(k.anrede2||''===a)?'selected':''}>${a}</option>`).join('')}
           </select>
         </div>
         <div class="form-row">
@@ -3784,7 +3784,8 @@ function renderZeitstrahl(k) {
             : `<span class="zeitstrahl-kanal">↗ ${typLabel}</span>`}
           ${ergebnisHtml}
           <span class="zeitstrahl-datum">${formatDatum(e.datum)}</span>
-          <button class="eigene-eintrag-del" style="margin-left:4px;font-size:15px;" onclick="zeitstrahlEintragLoeschen('${k.id}',${origIdx})" title="Eintrag löschen">✕</button>
+          <button class="eigene-eintrag-del" style="margin-left:4px;font-size:13px;color:rgba(160,176,224,0.6);" onclick="zeitstrahlEintragBearbeiten('${k.id}',${origIdx})" title="Eintrag bearbeiten">✎</button>
+          <button class="eigene-eintrag-del" style="margin-left:2px;font-size:15px;" onclick="zeitstrahlEintragLoeschen('${k.id}',${origIdx})" title="Eintrag löschen">✕</button>
         </div>
         ${e.notiz ? `<div class="zeitstrahl-inhalt">${e.notiz}</div>` : ''}
         ${e.anhangUrl ? `<div class="zeitstrahl-anhang">
@@ -3795,6 +3796,102 @@ function renderZeitstrahl(k) {
       </div>`;
     }).join('')}
   </div>` : `<p style="color:var(--text-muted);font-size:13px;margin-bottom:14px;">Noch kein Eintrag vorhanden.</p>`}`;
+}
+
+function zeitstrahlEintragBearbeiten(kundeId, index) {
+  const k = kundeById(kundeId); if(!k) return;
+  const e = k.kontakte?.[index]; if(!e) return;
+
+  document.getElementById('profilOverlay').classList.remove('open');
+  document.getElementById('schnellSubtitle').textContent = `Eintrag bearbeiten · ${vollName(k,1)}`;
+
+  const KANAL_OPTS = ['telefon','email','whatsapp','persoenlich','sonstiges'];
+  const KANAL_LABELS = {telefon:'📞 Telefon',email:'📧 E-Mail',whatsapp:'📱 WhatsApp',persoenlich:'🤝 Persönlich',sonstiges:'💬 Sonstiges'};
+
+  document.getElementById('schnellBody').innerHTML = `
+    <div class="form-grid" style="margin-bottom:12px;">
+      <div class="form-row">
+        <label class="form-label">Datum</label>
+        <input class="form-input" type="date" id="se-datum" value="${e.datum||''}" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">Kanal</label>
+        <select class="form-select" id="se-kanal">
+          ${KANAL_OPTS.map(k=>`<option value="${k}" ${(e.kanal||'sonstiges')===k?'selected':''}>${KANAL_LABELS[k]}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Richtung</label>
+      <div class="radio-group">
+        <div class="radio-opt"><input type="radio" name="se-richtung" id="se-aus" value="ausgehend" ${(e.richtung||'ausgehend')==='ausgehend'?'checked':''}><label for="se-aus" style="border-color:rgba(123,131,50,0.4);">↗ Wir melden uns</label></div>
+        <div class="radio-opt"><input type="radio" name="se-richtung" id="se-ein" value="eingehend" ${e.richtung==='eingehend'?'checked':''}><label for="se-ein" style="border-color:rgba(80,100,160,0.4);">↙ Kunde meldet sich</label></div>
+        <div class="radio-opt"><input type="radio" name="se-richtung" id="se-int" value="intern" ${e.richtung==='intern'?'checked':''}><label for="se-int" style="border-color:rgba(139,95,50,0.4);">🔒 Interne Notiz</label></div>
+      </div>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Von / Wer</label>
+      <select class="form-select" id="se-vonwem">
+        <option value="">– automatisch –</option>
+        <option value="${vollName(k,1).split(' ')[0]}" ${e.vonWem===vollName(k,1).split(' ')[0]?'selected':''}>${vollName(k,1).split(' ')[0]} (Kunde)</option>
+        ${vollName(k,2)?`<option value="${vollName(k,2).split(' ')[0]}" ${e.vonWem===vollName(k,2).split(' ')[0]?'selected':''}>${vollName(k,2).split(' ')[0]} (Kunde)</option>`:''}
+        ${['Franz-Josef','Viktor','Elias','Samuel'].map(b=>`<option value="${b}" ${e.vonWem===b?'selected':''}>${b}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Inhalt / Notiz</label>
+      <textarea class="form-textarea" id="se-inhalt" style="min-height:100px;">${e.notiz||''}</textarea>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Ergebnis</label>
+      <select class="form-select" id="se-ergebnis">
+        <option value="info" ${(e.ergebnis||'info')==='info'?'selected':''}>– nur Notiz / Info –</option>
+        <option value="alles_gut" ${e.ergebnis==='alles_gut'?'selected':''}>✓ Alles gut</option>
+        <option value="teilweise_besser" ${e.ergebnis==='teilweise_besser'?'selected':''}>◑ Wird besser</option>
+        <option value="nachbedarf" ${e.ergebnis==='nachbedarf'?'selected':''}>⚠ Nachbedarf</option>
+      </select>
+    </div>
+    ${e.anhangUrl ? `<div class="form-row">
+      <div class="form-label">Anhang</div>
+      <div class="upload-preview">
+        ${e.anhangTyp==='bild'?`<img src="${e.anhangUrl}" />`:`<video src="${e.anhangUrl}" muted></video>`}
+        <div style="flex:1;font-size:12px;color:#ddd8cc;">Bestehender Anhang bleibt erhalten</div>
+      </div>
+    </div>` : ''}`;
+
+  document.getElementById('schnellFooter').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeOverlay('schnellOverlay');openProfil('${kundeId}')">Abbrechen</button>
+    <button class="btn btn-primary" onclick="zeitstrahlEintragSpeichern('${kundeId}',${index})">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+      Änderungen speichern
+    </button>`;
+
+  document.getElementById('schnellOverlay').classList.add('open');
+}
+
+async function zeitstrahlEintragSpeichern(kundeId, index) {
+  const k = kundeById(kundeId); if(!k) return;
+  const altEintrag = k.kontakte?.[index]; if(!altEintrag) return;
+
+  const neuerEintrag = {
+    ...altEintrag,
+    datum: document.getElementById('se-datum')?.value || altEintrag.datum,
+    kanal: document.getElementById('se-kanal')?.value || altEintrag.kanal,
+    richtung: document.querySelector('input[name="se-richtung"]:checked')?.value || altEintrag.richtung,
+    vonWem: document.getElementById('se-vonwem')?.value || altEintrag.vonWem,
+    notiz: document.getElementById('se-inhalt')?.value.trim() || '',
+    ergebnis: document.getElementById('se-ergebnis')?.value || 'info',
+    typ: document.getElementById('se-kanal')?.options[document.getElementById('se-kanal').selectedIndex]?.text || altEintrag.typ,
+  };
+
+  await kundeUpdate(kundeId, k => {
+    const neueKontakte = [...(k.kontakte||[])];
+    neueKontakte[index] = neuerEintrag;
+    return {...k, kontakte: neueKontakte};
+  });
+
+  closeOverlay('schnellOverlay');
+  openProfil(kundeId);
 }
 
 async function zeitstrahlEintragLoeschen(kundeId, index) {
@@ -4613,7 +4710,8 @@ Object.assign(window, {
   openBeratung, beratungSpeichern, waehleMotiv, waehleMotivSek,
   angebotPositionHinzufuegen, angebotPositionEntfernen, angebotStatusAendern,
   angebotPositionLoeschen,
-  openSchnelleintrag, schnellEintragSpeichern, zeitstrahlEintragLoeschen,
+  openSchnelleintrag, schnellEintragSpeichern,
+  zeitstrahlEintragBearbeiten, zeitstrahlEintragSpeichern, zeitstrahlEintragLoeschen,
   seFileAusgewaehlt, seAnhangEntfernen,
   openKaufErfassen, kaufSpeichern, openLieferdatumErfassen,
   setQuelleKf,
