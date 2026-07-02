@@ -4148,15 +4148,57 @@ function openGespraech(id, modus='normal'){
       <div class="radio-opt"><input type="radio" name="g-amp" id="a-g" value="gruen" ${k.ampel==='gruen'?'checked':''}><label for="a-g" style="color:#9ed04e">● Zufrieden</label></div>
       <div class="radio-opt"><input type="radio" name="g-amp" id="a-y" value="gelb" ${k.ampel==='gelb'?'checked':''}><label for="a-y" style="color:#e0ad1a">● In Klärung</label></div>
       <div class="radio-opt"><input type="radio" name="g-amp" id="a-r" value="rot" ${k.ampel==='rot'?'checked':''}><label for="a-r" style="color:#f08070">● Dringend</label></div>
-    </div></div>`;
+    </div></div>
+    <div class="form-row">
+      <label class="form-label">Foto oder Video anhängen (optional)</label>
+      <div class="upload-zone" id="g-upload-zone" onclick="document.getElementById('g-file-input').click()">
+        <div style="font-size:22px;margin-bottom:4px;">📎</div>
+        <div style="font-size:13px;color:#ddd8cc;">Klicken zum Auswählen – Foto oder Video</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">z.B. Bildschirmaufzeichnung mit Einstellungsvorschlag</div>
+      </div>
+      <input type="file" id="g-file-input" accept="image/*,video/*" style="display:none;" onchange="gFileAusgewaehlt(this.files[0])" />
+      <div id="g-upload-vorschau"></div>
+    </div>`;
 
   document.getElementById('gespraechFooter').innerHTML=`
     <button class="btn btn-ghost" onclick="closeOverlay('gespraechOverlay')">Abbrechen</button>
-    <button class="btn btn-primary" onclick="gespraechSpeichern()">
+    <button class="btn btn-primary" id="g-speichern-btn" onclick="gespraechSpeichern()">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
       Speichern
     </button>`;
   document.getElementById('gespraechOverlay').classList.add('open');
+  _gAnhang = null; // Reset
+}
+
+// Anhang-State für Gesprächs-Dialog
+let _gAnhang = null;
+
+function gFileAusgewaehlt(file) {
+  if(!file) return;
+  const istBild = file.type.startsWith('image/');
+  const istVideo = file.type.startsWith('video/');
+  if(!istBild && !istVideo) { alert('Bitte ein Foto oder Video auswählen.'); return; }
+  if(file.size > 200*1024*1024) { alert('Datei zu groß (max. 200MB).'); return; }
+  _gAnhang = { file, typ: istBild?'bild':'video' };
+  const url = URL.createObjectURL(file);
+  const vorschau = document.getElementById('g-upload-vorschau');
+  if(vorschau) vorschau.innerHTML = `
+    <div class="upload-preview">
+      ${istBild ? `<img src="${url}" />` : `<video src="${url}" muted></video>`}
+      <div style="flex:1;">
+        <div style="font-size:12px;color:#F5F1E6;">${file.name}</div>
+        <div style="font-size:11px;color:var(--text-muted);">${(file.size/1024/1024).toFixed(1)} MB</div>
+      </div>
+      <button class="btn btn-ghost btn-xs" style="color:#f08070;" onclick="gAnhangEntfernen()">✕</button>
+    </div>`;
+}
+
+function gAnhangEntfernen() {
+  _gAnhang = null;
+  const vorschau = document.getElementById('g-upload-vorschau');
+  if(vorschau) vorschau.innerHTML = '';
+  const inp = document.getElementById('g-file-input');
+  if(inp) inp.value = '';
 }
 
 function updateNaechsterVorschlag() {
@@ -4198,6 +4240,25 @@ async function gespraechSpeichern(){
   // Schlaf-Check
   const sc = leseSchlafCheck('g', datum, k.id);
 
+  // Upload falls Anhang vorhanden
+  let anhangUrl = '', anhangTyp = '', anhangPfad = '';
+  if(_gAnhang) {
+    const btn = document.getElementById('g-speichern-btn');
+    if(btn) { btn.disabled=true; btn.textContent='Lade hoch ...'; }
+    try {
+      const ext = _gAnhang.file.name.split('.').pop();
+      const pfad = `anhaenge/${k.id}/${Date.now()}.${ext}`;
+      const fileRef = window._storageRef(window._storage, pfad);
+      await window._uploadBytes(fileRef, _gAnhang.file);
+      anhangUrl = await window._getDownloadURL(fileRef);
+      anhangTyp = _gAnhang.typ;
+      anhangPfad = pfad;
+    } catch(err) {
+      console.error('Upload fehlgeschlagen:', err);
+    }
+    _gAnhang = null;
+  }
+
   await kundeUpdate(aktivesKundeId, kunde => {
     // Nachbetreuungsschleife-Logik
     let neuerPfad = kunde.pfad;
@@ -4205,12 +4266,10 @@ async function gespraechSpeichern(){
     let naechsterSchrittId = kunde.aktuellerSchritt;
 
     if(ergebnis === 'nachbedarf' || ergebnis === 'teilweise_besser') {
-      // Nachbedarf → Schleife aktivieren, Pfad B, Schritt NICHT vorziehen
       neuerPfad = 'B';
       nachbetreuungAktivNeu = true;
     } else if(ergebnis === 'alles_gut') {
       if(nbAktivJetzt) {
-        // Schleife war aktiv, jetzt gelöst → Schleife beenden, Schritt jetzt vorziehen
         nachbetreuungAktivNeu = false;
         if(naechster) naechsterSchrittId = naechster.id;
       } else if(kunde.aktuellerSchritt === 'erstanruf') {
@@ -4223,7 +4282,6 @@ async function gespraechSpeichern(){
       if(naechster) naechsterSchrittId = naechster.id;
     }
 
-    // Kontakt-Label
     const typLabel = {
       ausgehend: schrittLabel(kunde.aktuellerSchritt),
       rueckmeldung: `Kundenrückmeldung (${schrittLabel(kunde.aktuellerSchritt)})`,
@@ -4232,9 +4290,16 @@ async function gespraechSpeichern(){
 
     const neueSchlafchecks = sc ? [...(kunde.schlafchecks||[]), sc] : (kunde.schlafchecks||[]);
 
+    const neuerKontakt = {
+      typ: typLabel, datum, ergebnis, notiz,
+      kanal: 'telefon', richtung: gespraechTyp==='rueckmeldung'?'eingehend':'ausgehend',
+      vonWem: gespraechTyp==='rueckmeldung' ? vollName(kunde,1).split(' ')[0] : kunde.berater,
+      ...(anhangUrl ? {anhangUrl, anhangTyp, anhangPfad} : {}),
+    };
+
     return {
       ...kunde,
-      kontakte: [...(kunde.kontakte||[]), {typ: typLabel, datum, ergebnis, notiz}],
+      kontakte: [...(kunde.kontakte||[]), neuerKontakt],
       schlafchecks: neueSchlafchecks,
       pfad: neuerPfad,
       nachbetreuungAktiv: nachbetreuungAktivNeu,
@@ -4712,7 +4777,7 @@ Object.assign(window, {
   angebotPositionLoeschen,
   openSchnelleintrag, schnellEintragSpeichern,
   zeitstrahlEintragBearbeiten, zeitstrahlEintragSpeichern, zeitstrahlEintragLoeschen,
-  seFileAusgewaehlt, seAnhangEntfernen,
+  seFileAusgewaehlt, seAnhangEntfernen, gFileAusgewaehlt, gAnhangEntfernen,
   openKaufErfassen, kaufSpeichern, openLieferdatumErfassen,
   setQuelleKf,
   renderAuftraege, openAuftragNeu, openAuftragDetail, openAuftragBearbeiten,
