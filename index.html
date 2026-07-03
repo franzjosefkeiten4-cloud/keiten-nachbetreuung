@@ -546,18 +546,44 @@ document.addEventListener('DOMContentLoaded', () => {
       <div style="font-family:'Playfair Display',serif;font-size:24px;font-weight:600;color:#F5F1E6;">Keiten</div>
       <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-top:2px;">Nachbetreuung · Interner Bereich</div>
     </div>
-    <div style="background:rgba(245,241,230,0.05);border:1px solid var(--border);border-radius:14px;padding:28px 24px;">
+
+    <!-- Login-Box -->
+    <div id="login-box" style="background:rgba(245,241,230,0.05);border:1px solid var(--border);border-radius:14px;padding:28px 24px;">
       <div class="form-row">
         <label class="form-label">E-Mail</label>
         <input class="form-input" type="email" id="login-email" placeholder="name@schreinerei-keiten.de" onkeydown="if(event.key==='Enter')document.getElementById('login-passwort').focus()" />
       </div>
       <div class="form-row">
         <label class="form-label">Passwort</label>
-        <input class="form-input" type="password" id="login-passwort" placeholder="••••••••" onkeydown="if(event.key==='Enter')loginVersuchen()" />
+        <div style="position:relative;">
+          <input class="form-input" type="password" id="login-passwort" placeholder="••••••••" onkeydown="if(event.key==='Enter')loginVersuchen()" style="padding-right:44px;" />
+          <button type="button" onclick="togglePasswortSichtbar()" id="pw-auge" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);padding:4px;line-height:0;" title="Passwort anzeigen">
+            <svg id="pw-auge-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
       </div>
       <div id="login-fehler" style="display:none;background:rgba(180,60,40,0.15);border:1px solid rgba(180,60,40,0.35);border-radius:7px;padding:9px 12px;font-size:12px;color:#f08070;margin-bottom:14px;"></div>
       <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="loginVersuchen()" id="login-btn">Anmelden</button>
+      <div style="text-align:center;margin-top:14px;">
+        <button type="button" onclick="zeigePwReset()" style="background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer;text-decoration:underline;">Passwort vergessen?</button>
+      </div>
     </div>
+
+    <!-- Passwort-Reset-Box -->
+    <div id="pw-reset-box" style="display:none;background:rgba(245,241,230,0.05);border:1px solid var(--border);border-radius:14px;padding:28px 24px;">
+      <div style="font-size:14px;font-weight:600;color:#F5F1E6;margin-bottom:6px;">Passwort zurücksetzen</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">Gib deine E-Mail-Adresse ein – du erhältst einen Reset-Link per E-Mail.</div>
+      <div class="form-row">
+        <label class="form-label">E-Mail</label>
+        <input class="form-input" type="email" id="reset-email" placeholder="name@schreinerei-keiten.de" onkeydown="if(event.key==='Enter')resetPasswort()" />
+      </div>
+      <div id="reset-meldung" style="display:none;border-radius:7px;padding:9px 12px;font-size:12px;margin-bottom:14px;"></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="resetPasswort()" id="reset-btn">Reset-Link senden</button>
+      <div style="text-align:center;margin-top:14px;">
+        <button type="button" onclick="zeigeLogin()" style="background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer;text-decoration:underline;">← Zurück zum Login</button>
+      </div>
+    </div>
+
     <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--text-muted);">Nur für registrierte Keiten-Mitarbeiter</div>
   </div>
 </div>
@@ -1076,6 +1102,68 @@ const MITARBEITER_NAMEN = {
 };
 
 let _aktuellerNutzer = null;
+
+window.togglePasswortSichtbar = function() {
+  const inp = document.getElementById('login-passwort');
+  const icon = document.getElementById('pw-auge-icon');
+  if(inp.type === 'password') {
+    inp.type = 'text';
+    // Durchgestrichenes Auge
+    icon.innerHTML = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>`;
+  } else {
+    inp.type = 'password';
+    icon.innerHTML = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+  }
+};
+
+window.zeigePwReset = function() {
+  document.getElementById('login-box').style.display = 'none';
+  document.getElementById('pw-reset-box').style.display = 'block';
+  const email = document.getElementById('login-email')?.value;
+  if(email) document.getElementById('reset-email').value = email;
+};
+
+window.zeigeLogin = function() {
+  document.getElementById('pw-reset-box').style.display = 'none';
+  document.getElementById('login-box').style.display = 'block';
+  document.getElementById('reset-meldung').style.display = 'none';
+};
+
+window.resetPasswort = async function() {
+  const email = document.getElementById('reset-email').value.trim();
+  const meldung = document.getElementById('reset-meldung');
+  const btn = document.getElementById('reset-btn');
+  if(!email) { 
+    meldung.style.display = 'block';
+    meldung.style.background = 'rgba(180,60,40,0.15)';
+    meldung.style.border = '1px solid rgba(180,60,40,0.35)';
+    meldung.style.color = '#f08070';
+    meldung.textContent = 'Bitte E-Mail-Adresse eingeben.';
+    return; 
+  }
+  btn.disabled = true;
+  btn.textContent = 'Sende ...';
+  try {
+    const { sendPasswordResetEmail } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+    await sendPasswordResetEmail(window._auth, email);
+    meldung.style.display = 'block';
+    meldung.style.background = 'rgba(90,122,42,0.15)';
+    meldung.style.border = '1px solid rgba(90,122,42,0.35)';
+    meldung.style.color = '#9ed04e';
+    meldung.textContent = `✓ Reset-Link wurde an ${email} gesendet. Bitte E-Mail prüfen (auch Spam-Ordner).`;
+    btn.textContent = 'Gesendet ✓';
+  } catch(err) {
+    meldung.style.display = 'block';
+    meldung.style.background = 'rgba(180,60,40,0.15)';
+    meldung.style.border = '1px solid rgba(180,60,40,0.35)';
+    meldung.style.color = '#f08070';
+    meldung.textContent = err.code === 'auth/user-not-found'
+      ? 'Keine Anmeldung mit dieser E-Mail gefunden.'
+      : 'Fehler beim Senden. Bitte nochmal versuchen.';
+    btn.disabled = false;
+    btn.textContent = 'Reset-Link senden';
+  }
+};
 
 window.loginVersuchen = async function() {
   const email = document.getElementById('login-email').value.trim();
