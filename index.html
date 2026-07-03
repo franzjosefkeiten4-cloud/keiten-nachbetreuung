@@ -640,6 +640,12 @@ document.addEventListener('DOMContentLoaded', () => {
           <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:600;color:#F5F1E6;margin-bottom:6px;">Gewerbekunde</div>
           <div style="font-size:13px;color:#b8b09e;line-height:1.5;">Industrie, Firmenkunde, Auftragsabwicklung</div>
         </div>
+        <div onclick="document.getElementById('ghl-csv-input').click()" style="background:rgba(80,100,160,0.10);border:1px dashed rgba(80,100,160,0.4);border-radius:14px;padding:28px 20px;text-align:center;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(80,100,160,0.18)'" onmouseout="this.style.background='rgba(80,100,160,0.10)'">
+          <div style="font-size:36px;margin-bottom:12px;">📥</div>
+          <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:600;color:#a0b0e0;margin-bottom:6px;">GHL-Import</div>
+          <div style="font-size:13px;color:#b8b09e;line-height:1.5;">Kontakte aus Go High Level als CSV importieren</div>
+        </div>
+        <input type="file" id="ghl-csv-input" accept=".csv" style="display:none;" onchange="ghlCsvImport(this.files[0])" />
       </div>
     </div>
 
@@ -4562,10 +4568,136 @@ function openWA(id){
 // ============================================================
 
 // ============================================================
-// WEICHE NEUKUNDE
+// GHL CSV IMPORT
 // ============================================================
 
-function zeigeNkWeiche() {
+async function ghlCsvImport(file) {
+  if(!file) return;
+
+  const text = await file.text();
+  const zeilen = text.split('\n').filter(z => z.trim());
+  if(zeilen.length < 2) { alert('Die CSV-Datei scheint leer zu sein.'); return; }
+
+  const parseCSVZeile = (zeile) => {
+    const result = [];
+    let inQuotes = false, current = '';
+    for(let i = 0; i < zeile.length; i++) {
+      const c = zeile[i];
+      if(c === '"' && zeile[i+1] !== '"') { inQuotes = !inQuotes; }
+      else if(c === '"' && zeile[i+1] === '"') { current += '"'; i++; }
+      else if(c === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
+      else { current += c; }
+    }
+    result.push(current.trim());
+    return result;
+  };
+
+  const headers = parseCSVZeile(zeilen[0]).map(h => h.replace(/^"|"$/g,'').trim().toLowerCase());
+
+  // Exakte Spalten-Indizes aus dem GHL-Export
+  const COL = {
+    id:        headers.indexOf('contact id'),
+    vorname:   headers.indexOf('first name'),
+    nachname:  headers.indexOf('last name'),
+    telefon:   headers.indexOf('phone'),
+    email:     headers.indexOf('email'),
+    firma:     headers.indexOf('business name'),
+    erstellt:  headers.indexOf('created'),
+    tags:      headers.indexOf('tags'),
+  };
+
+  // Duplikat-Check
+  const bestehendeTel = new Set(KUNDEN.map(k => (k.tel1||'').replace(/[\s\-]/g,'')).filter(Boolean));
+  const bestehendeNamen = new Set(KUNDEN.map(k => (k.name1||'').toLowerCase().trim()));
+
+  const importiert = [];
+  const duplikate = [];
+  const uebersprungen = [];
+
+  for(let i = 1; i < zeilen.length; i++) {
+    const felder = parseCSVZeile(zeilen[i]);
+    if(felder.every(f => !f)) continue;
+
+    const get = (col) => col >= 0 && col < felder.length
+      ? felder[col].replace(/^"|"$/g,'').trim() : '';
+
+    // Nur Kontakte mit Tag "schlafberatung gebucht" importieren
+    const tags = get(COL.tags).toLowerCase();
+    if(!tags.includes('schlafberatung gebucht')) {
+      uebersprungen.push(get(COL.vorname) + ' ' + get(COL.nachname));
+      continue;
+    }
+
+    const vorname = get(COL.vorname);
+    const nachname = get(COL.nachname);
+    const name1 = [vorname, nachname].filter(Boolean).join(' ');
+    if(!name1 || name1.trim() === '') continue;
+
+    const tel = get(COL.telefon).replace(/[\s\-]/g,'');
+    const email = get(COL.email);
+
+    // Duplikat-Prüfung
+    if(tel && bestehendeTel.has(tel)) { duplikate.push(name1); continue; }
+    if(bestehendeNamen.has(name1.toLowerCase())) { duplikate.push(name1); continue; }
+
+    // Datum parsen (ISO: "2026-07-01T20:14:02+02:00")
+    const erstelltRaw = get(COL.erstellt);
+    let erstkontaktDatum = new Date().toISOString().slice(0,10);
+    if(erstelltRaw) {
+      const d = new Date(erstelltRaw);
+      if(!isNaN(d)) erstkontaktDatum = d.toISOString().slice(0,10);
+    }
+
+    const neuerKunde = {
+      id: genId(), typ: 'privat',
+      anrede1: '', vorname1: vorname, nachname1: nachname, name1,
+      anrede2: '', vorname2: '', nachname2: '', name2: '',
+      tel1: tel, tel2: '', wa1: 'wa', wa2: 'wa',
+      email1: email,
+      berater: 'Franz-Josef',
+      erstkontaktDatum, kaufdatum: '', lieferdatum: '',
+      kundeStufe: 'interessent',
+      person1: null, person2: null,
+      pfad: 'A', status: 'aktiv',
+      aktuellerSchritt: 'interessent', ampel: 'gelb',
+      kontakte: [{
+        typ: 'Sonstiges', kanal: 'sonstiges', richtung: 'intern',
+        vonWem: 'GHL-Import', datum: erstkontaktDatum,
+        ergebnis: 'info',
+        notiz: `Importiert aus Go High Level · Tag: schlafberatung gebucht${email ? ' · E-Mail: '+email : ''}${get(COL.firma) ? ' · Firma: '+get(COL.firma) : ''}`,
+      }],
+      naechsterKontakt: '',
+      beratung: {}, vorqualifizierung: {},
+    };
+
+    importiert.push(neuerKunde);
+    KUNDEN.push(neuerKunde);
+    if(tel) bestehendeTel.add(tel);
+    bestehendeNamen.add(name1.toLowerCase());
+  }
+
+  // In Firebase speichern
+  for(const k of importiert) {
+    await speichereKundeFirestore(k);
+  }
+
+  // Ergebnis
+  const msg = [
+    `✓ ${importiert.length} Kontakt${importiert.length===1?'':'e'} mit Tag "schlafberatung gebucht" importiert`,
+    duplikate.length ? `⚠ ${duplikate.length} bereits vorhanden (übersprungen):\n${duplikate.join(', ')}` : '',
+    uebersprungen.length ? `ℹ ${uebersprungen.filter(n=>n.trim()).length} Kontakte ohne passenden Tag ignoriert` : '',
+  ].filter(Boolean).join('\n\n');
+
+  alert(msg);
+  renderKundenliste();
+  showView('kundenliste');
+}
+
+// ============================================================
+
+// ============================================================
+// WEICHE NEUKUNDE
+// ============================================================ {
   document.getElementById('nk-weiche').style.display = 'block';
   document.getElementById('nk-privat-form').style.display = 'none';
   document.getElementById('nk-gewerbe-form').style.display = 'none';
@@ -4767,7 +4899,7 @@ Object.assign(window, {
   openBearbeiten, bearbeitenSpeichern, setQuelleB,
   kundeArchivieren, kundeReaktivieren, setWaFlag,
   openWA, kundeAnlegen, bestaetigeReset, closeOverlay, overlayClick,
-  zeigeNkWeiche, zeigeNkFormular, toggleBestandskunde,
+  zeigeNkWeiche, zeigeNkFormular, toggleBestandskunde, ghlCsvImport,
   switchTab, togglePerson2, setQuelle, toggleAddPanel,
   addEintragFromField, verwaltungHinzufuegen, loescheEintrag,
   renderAufgaben, openAufgabeNeu, openAufgabeBearbeiten,
