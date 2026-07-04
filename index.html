@@ -1626,6 +1626,11 @@ function erstanrufFaellig(k){if(!k.lieferdatum||k.aktuellerSchritt!=='erstanruf'
 function erstanrufStatus(k){
   const f=erstanrufFaellig(k);if(!f)return null;
   const d=tageDiff(f);
+  // Bestandskunde: Lieferung mehr als 90 Tage her → kein Countdown mehr sinnvoll
+  if(k.lieferdatum){
+    const lieferDiff = tageDiff(k.lieferdatum);
+    if(lieferDiff < -90) return null;
+  }
   if(d<-7)return{typ:'kritisch',text:`Erstanruf ${Math.abs(d)} Tage überfällig!`};
   if(d<0)return{typ:'ueberfaellig',text:`Erstanruf ${Math.abs(d)} Tage überfällig`};
   if(d<=7)return{typ:'bald',text:`Erstanruf in ${d} Tag${d===1?'':'en'} fällig`};
@@ -3307,7 +3312,10 @@ async function kaufSpeichern(id, hatPerson2) {
     kaufdatum, lieferdatum,
     kundeStufe: 'gekauft',
     aktuellerSchritt: 'erstanruf',
-    naechsterKontakt: lieferdatum ? dateNaechster(42, lieferdatum) : dateAdd(42),
+    // Wenn Lieferdatum mehr als 90 Tage her: kein Countdown, nächster Kontakt leer lassen
+    naechsterKontakt: lieferdatum && tageDiff(lieferdatum) > -90
+      ? dateNaechster(42, lieferdatum)
+      : (lieferdatum ? '' : dateAdd(42)),
     person1: leseProdukteFuerKauf('kf1'),
     person2: hatPerson2 ? leseProdukteFuerKauf('kf2') : null,
   }));
@@ -4793,8 +4801,7 @@ async function ghlCsvImport(file) {
 
 // ============================================================
 // WEICHE NEUKUNDE
-// ============================================================
-function zeigeNkWeiche() {
+// ============================================================ {
   document.getElementById('nk-weiche').style.display = 'block';
   document.getElementById('nk-privat-form').style.display = 'none';
   document.getElementById('nk-gewerbe-form').style.display = 'none';
