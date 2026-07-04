@@ -1092,6 +1092,72 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </div><!-- /appContainer -->
 
+<script>
+// Login-Hilfsfunktionen (normaler Script-Block, kein Module)
+function togglePasswortSichtbar() {
+  const inp = document.getElementById('login-passwort');
+  const icon = document.getElementById('pw-auge-icon');
+  if(!inp) return;
+  if(inp.type === 'password') {
+    inp.type = 'text';
+    icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+  } else {
+    inp.type = 'password';
+    icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+  }
+}
+
+function zeigePwReset() {
+  document.getElementById('login-box').style.display = 'none';
+  document.getElementById('pw-reset-box').style.display = 'block';
+  const email = document.getElementById('login-email').value;
+  if(email) document.getElementById('reset-email').value = email;
+}
+
+function zeigeLogin() {
+  document.getElementById('pw-reset-box').style.display = 'none';
+  document.getElementById('login-box').style.display = 'block';
+  const m = document.getElementById('reset-meldung');
+  if(m) m.style.display = 'none';
+}
+
+async function resetPasswort() {
+  const email = document.getElementById('reset-email').value.trim();
+  const meldung = document.getElementById('reset-meldung');
+  const btn = document.getElementById('reset-btn');
+
+  const zeigeFehler = (text) => {
+    meldung.style.cssText = 'display:block;background:rgba(180,60,40,0.15);border:1px solid rgba(180,60,40,0.35);border-radius:7px;padding:9px 12px;font-size:12px;color:#f08070;margin-bottom:14px;';
+    meldung.textContent = text;
+  };
+
+  if(!email) { zeigeFehler('Bitte E-Mail-Adresse eingeben.'); return; }
+  if(!window._sendPasswordResetEmail || !window._auth) {
+    zeigeFehler('Bitte kurz warten und nochmal versuchen.'); return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Sende ...';
+  try {
+    await window._sendPasswordResetEmail(window._auth, email);
+    meldung.style.cssText = 'display:block;background:rgba(90,122,42,0.15);border:1px solid rgba(90,122,42,0.35);border-radius:7px;padding:9px 12px;font-size:12px;color:#9ed04e;margin-bottom:14px;';
+    meldung.textContent = '✓ Reset-Link wurde gesendet. Bitte E-Mail prüfen (auch Spam-Ordner).';
+    btn.textContent = 'Gesendet ✓';
+  } catch(err) {
+    const msg = err.code === 'auth/user-not-found'
+      ? 'Keine Anmeldung mit dieser E-Mail gefunden.'
+      : 'Fehler beim Senden. Bitte nochmal versuchen.';
+    zeigeFehler(msg);
+    btn.disabled = false;
+    btn.textContent = 'Reset-Link senden';
+  }
+}
+
+function loginVersuchen() {
+  if(window._loginVersuchenAsync) window._loginVersuchenAsync();
+}
+</script>
+
 <script type="module">
 // ============================================================
 // AUTHENTIFIZIERUNG
@@ -1107,68 +1173,7 @@ const MITARBEITER_NAMEN = {
 
 let _aktuellerNutzer = null;
 
-window.togglePasswortSichtbar = function() {
-  const inp = document.getElementById('login-passwort');
-  const icon = document.getElementById('pw-auge-icon');
-  if(inp.type === 'password') {
-    inp.type = 'text';
-    // Durchgestrichenes Auge
-    icon.innerHTML = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>`;
-  } else {
-    inp.type = 'password';
-    icon.innerHTML = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
-  }
-};
-
-window.zeigePwReset = function() {
-  document.getElementById('login-box').style.display = 'none';
-  document.getElementById('pw-reset-box').style.display = 'block';
-  const email = document.getElementById('login-email')?.value;
-  if(email) document.getElementById('reset-email').value = email;
-};
-
-window.zeigeLogin = function() {
-  document.getElementById('pw-reset-box').style.display = 'none';
-  document.getElementById('login-box').style.display = 'block';
-  document.getElementById('reset-meldung').style.display = 'none';
-};
-
-window.resetPasswort = async function() {
-  const email = document.getElementById('reset-email').value.trim();
-  const meldung = document.getElementById('reset-meldung');
-  const btn = document.getElementById('reset-btn');
-  if(!email) { 
-    meldung.style.display = 'block';
-    meldung.style.background = 'rgba(180,60,40,0.15)';
-    meldung.style.border = '1px solid rgba(180,60,40,0.35)';
-    meldung.style.color = '#f08070';
-    meldung.textContent = 'Bitte E-Mail-Adresse eingeben.';
-    return; 
-  }
-  btn.disabled = true;
-  btn.textContent = 'Sende ...';
-  try {
-    await window._sendPasswordResetEmail(window._auth, email);
-    meldung.style.display = 'block';
-    meldung.style.background = 'rgba(90,122,42,0.15)';
-    meldung.style.border = '1px solid rgba(90,122,42,0.35)';
-    meldung.style.color = '#9ed04e';
-    meldung.textContent = `✓ Reset-Link wurde an ${email} gesendet. Bitte E-Mail prüfen (auch Spam-Ordner).`;
-    btn.textContent = 'Gesendet ✓';
-  } catch(err) {
-    meldung.style.display = 'block';
-    meldung.style.background = 'rgba(180,60,40,0.15)';
-    meldung.style.border = '1px solid rgba(180,60,40,0.35)';
-    meldung.style.color = '#f08070';
-    meldung.textContent = err.code === 'auth/user-not-found'
-      ? 'Keine Anmeldung mit dieser E-Mail gefunden.'
-      : 'Fehler beim Senden. Bitte nochmal versuchen.';
-    btn.disabled = false;
-    btn.textContent = 'Reset-Link senden';
-  }
-};
-
-window.loginVersuchen = async function() {
+window._loginVersuchenAsync = async function() {
   const email = document.getElementById('login-email').value.trim();
   const passwort = document.getElementById('login-passwort').value;
   const fehlerBox = document.getElementById('login-fehler');
