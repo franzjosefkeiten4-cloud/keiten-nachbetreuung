@@ -1625,12 +1625,14 @@ function genId(){return 'k'+Date.now().toString(36);}
 function erstanrufFaellig(k){if(!k.lieferdatum||k.aktuellerSchritt!=='erstanruf')return null;const d=new Date(k.lieferdatum);d.setDate(d.getDate()+42);return d.toISOString().slice(0,10);}
 function erstanrufStatus(k){
   const f=erstanrufFaellig(k);if(!f)return null;
-  const d=tageDiff(f);
+  // Wenn bereits Kontakte vorhanden → Erstanruf wurde gemacht
+  if(k.kontakte && k.kontakte.length > 0) return null;
   // Bestandskunde: Lieferung mehr als 90 Tage her → kein Countdown mehr sinnvoll
   if(k.lieferdatum){
     const lieferDiff = tageDiff(k.lieferdatum);
     if(lieferDiff < -90) return null;
   }
+  const d=tageDiff(f);
   if(d<-7)return{typ:'kritisch',text:`Erstanruf ${Math.abs(d)} Tage überfällig!`};
   if(d<0)return{typ:'ueberfaellig',text:`Erstanruf ${Math.abs(d)} Tage überfällig`};
   if(d<=7)return{typ:'bald',text:`Erstanruf in ${d} Tag${d===1?'':'en'} fällig`};
