@@ -2277,6 +2277,94 @@ function aufgabenProKunde(kundeId) {
 }
 
 // ============================================================
+// BERATUNGSCHECKLISTE UPLOAD
+// ============================================================
+
+function checklistenProfilHtml(k) {
+  const n1 = vollName(k,1);
+  const n2 = vollName(k,2);
+  const cl1 = k.checkliste1 || null;
+  const cl2 = k.checkliste2 || null;
+
+  return `<div style="background:rgba(139,95,50,0.08);border:1px solid rgba(139,95,50,0.22);border-radius:var(--radius);padding:14px;margin-bottom:16px;">
+    <div style="font-family:'Playfair Display',serif;font-size:14px;font-weight:600;color:var(--holz-light);margin-bottom:12px;">📋 Beratungscheckliste</div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div style="font-size:12px;font-weight:600;color:#ddd8cc;">${n1.split(' ')[0]}</div>
+      ${cl1
+        ? `<div style="display:flex;gap:6px;align-items:center;">
+            ${cl1.typ==='bild'
+              ? `<img src="${cl1.url}" onclick="window.open('${cl1.url}','_blank')" style="height:40px;border-radius:5px;cursor:pointer;border:1px solid var(--border);" />`
+              : `<a href="${cl1.url}" target="_blank" rel="noopener" style="font-size:12px;color:#a0b0e0;text-decoration:underline;">📄 Dokument öffnen</a>`}
+            <button class="eigene-eintrag-del" style="font-size:14px;" onclick="checklisteLoeschen('${k.id}',1)" title="Checkliste entfernen">✕</button>
+          </div>`
+        : `<label class="btn btn-ghost btn-xs" style="cursor:pointer;">
+            📎 Hochladen
+            <input type="file" accept="image/*,.pdf" style="display:none;" onchange="checklisteHochladen('${k.id}',1,this.files[0])" />
+          </label>`}
+    </div>
+
+    ${n2 ? `<div style="display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-size:12px;font-weight:600;color:#ddd8cc;">${n2.split(' ')[0]}</div>
+      ${cl2
+        ? `<div style="display:flex;gap:6px;align-items:center;">
+            ${cl2.typ==='bild'
+              ? `<img src="${cl2.url}" onclick="window.open('${cl2.url}','_blank')" style="height:40px;border-radius:5px;cursor:pointer;border:1px solid var(--border);" />`
+              : `<a href="${cl2.url}" target="_blank" rel="noopener" style="font-size:12px;color:#a0b0e0;text-decoration:underline;">📄 Dokument öffnen</a>`}
+            <button class="eigene-eintrag-del" style="font-size:14px;" onclick="checklisteLoeschen('${k.id}',2)" title="Checkliste entfernen">✕</button>
+          </div>`
+        : `<label class="btn btn-ghost btn-xs" style="cursor:pointer;">
+            📎 Hochladen
+            <input type="file" accept="image/*,.pdf" style="display:none;" onchange="checklisteHochladen('${k.id}',2,this.files[0])" />
+          </label>`}
+    </div>` : ''}
+  </div>`;
+}
+
+async function checklisteHochladen(kundeId, personNr, file) {
+  if(!file) return;
+  const istBild = file.type.startsWith('image/');
+  const istPdf = file.type === 'application/pdf';
+  if(!istBild && !istPdf) { alert('Bitte ein Foto oder PDF auswählen.'); return; }
+  if(file.size > 20*1024*1024) { alert('Datei zu groß (max. 20MB).'); return; }
+
+  try {
+    const ext = file.name.split('.').pop();
+    const pfad = `checklisten/${kundeId}/person${personNr}_${Date.now()}.${ext}`;
+    const fileRef = window._storageRef(window._storage, pfad);
+    await window._uploadBytes(fileRef, file);
+    const url = await window._getDownloadURL(fileRef);
+
+    const feld = personNr === 1 ? 'checkliste1' : 'checkliste2';
+    await kundeUpdate(kundeId, k => ({
+      ...k,
+      [feld]: { url, pfad, typ: istBild ? 'bild' : 'pdf', name: file.name, datum: new Date().toISOString().slice(0,10) }
+    }));
+    openProfil(kundeId);
+  } catch(err) {
+    console.error('Checkliste Upload fehlgeschlagen:', err);
+    alert('Upload fehlgeschlagen. Bitte nochmal versuchen.');
+  }
+}
+
+async function checklisteLoeschen(kundeId, personNr) {
+  if(!confirm('Checkliste wirklich entfernen?')) return;
+  const k = kundeById(kundeId);
+  const feld = personNr === 1 ? 'checkliste1' : 'checkliste2';
+  const cl = k?.[feld];
+
+  if(cl?.pfad) {
+    try {
+      const fileRef = window._storageRef(window._storage, cl.pfad);
+      await window._deleteObject(fileRef);
+    } catch(e) { console.warn('Storage-Datei konnte nicht gelöscht werden:', e); }
+  }
+
+  await kundeUpdate(kundeId, k => ({ ...k, [feld]: null }));
+  openProfil(kundeId);
+}
+
+// ============================================================
 // BERATUNGSERFASSUNG
 // ============================================================
 
@@ -3571,12 +3659,16 @@ function openProfil(id){
     const lf=LEITFAEDEN[lfKey];
     const lfHtml=lf&&k.kundeStufe==='gekauft'?`<div class="leitfaden-box"><div class="leitfaden-title">💬 ${lf.titel}</div><div class="leitfaden-intro">${lf.intro}</div><ul class="leitfaden-fragen">${lf.fragen.map(f=>`<li>${f}</li>`).join('')}</ul></div>`:'';
     const beratungHtml = k.kundeStufe==='gekauft' ? beratungProfilHtml(k) : '';
+
+    // Beratungschecklisten-Upload
+    const checklistenHtml = checklistenProfilHtml(k);
+
     const waHtml=k.aktuellerSchritt==='empfehlung'?`<div class="wa-box"><div class="wa-title">📱 WhatsApp-Empfehlung senden</div><p style="font-size:13px;color:#b8b09e;margin-bottom:12px;">Der Kunde ist bereit.</p><button class="btn btn-wa btn-sm" onclick="openWA('${k.id}')">WhatsApp öffnen</button></div>`:'';
     const verlaufHtml = renderZeitstrahl(k);
     const offeneAufgaben=aufgabenProKunde(k.id);
     const aufgabenHtml=`<div class="divider"></div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;"><div class="section-label" style="margin:0;">Offene Aufgaben (${offeneAufgaben.length})</div><button class="btn btn-ghost btn-xs" onclick="openAufgabeNeu('${k.id}')">+ Aufgabe</button></div>${offeneAufgaben.length?offeneAufgaben.map(a=>aufgabeCardHtml(a,true)).join(''):'<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Keine offenen Aufgaben.</p>'}`;
 
-    bodyHtml = tHtml+eaHtml+vqHtml+produktHtml+beratungHtml+lfHtml+waHtml+'<div class="divider"></div>'+verlaufHtml+aufgabenHtml+auftraegeProfilHtml(k.id);
+    bodyHtml = tHtml+eaHtml+vqHtml+checklistenHtml+produktHtml+beratungHtml+lfHtml+waHtml+'<div class="divider"></div>'+verlaufHtml+aufgabenHtml+auftraegeProfilHtml(k.id);
   }
 
   document.getElementById('profilBody').innerHTML = bodyHtml;
@@ -5031,6 +5123,7 @@ Object.assign(window, {
   renderAufgaben, openAufgabeNeu, openAufgabeBearbeiten,
   aufgabeSpeichern, aufgabeErledigen, aufgabeLoeschen, toggleKundenbezug,
   openBeratung, beratungSpeichern, waehleMotiv, waehleMotivSek,
+  checklisteHochladen, checklisteLoeschen,
   angebotPositionHinzufuegen, angebotPositionEntfernen, angebotStatusAendern,
   angebotPositionLoeschen,
   openSchnelleintrag, schnellEintragSpeichern,
