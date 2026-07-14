@@ -2295,7 +2295,7 @@ function checklistenProfilHtml(k) {
         ? `<div style="display:flex;gap:6px;align-items:center;">
             ${cl1.typ==='bild'
               ? `<img src="${cl1.url}" onclick="window.open('${cl1.url}','_blank')" style="height:40px;border-radius:5px;cursor:pointer;border:1px solid var(--border);" />`
-              : `<a href="${cl1.url}" target="_blank" rel="noopener" style="font-size:12px;color:#a0b0e0;text-decoration:underline;">📄 Dokument öffnen</a>`}
+              : `<a href="${cl1.url}" target="_blank" rel="noopener" style="font-size:12px;color:#a0b0e0;text-decoration:underline;">📄 ${cl1.name||'Dokument öffnen'}</a>`}
             <button class="eigene-eintrag-del" style="font-size:14px;" onclick="checklisteLoeschen('${k.id}',1)" title="Checkliste entfernen">✕</button>
           </div>`
         : `<label class="btn btn-ghost btn-xs" style="cursor:pointer;">
@@ -2310,7 +2310,7 @@ function checklistenProfilHtml(k) {
         ? `<div style="display:flex;gap:6px;align-items:center;">
             ${cl2.typ==='bild'
               ? `<img src="${cl2.url}" onclick="window.open('${cl2.url}','_blank')" style="height:40px;border-radius:5px;cursor:pointer;border:1px solid var(--border);" />`
-              : `<a href="${cl2.url}" target="_blank" rel="noopener" style="font-size:12px;color:#a0b0e0;text-decoration:underline;">📄 Dokument öffnen</a>`}
+              : `<a href="${cl2.url}" target="_blank" rel="noopener" style="font-size:12px;color:#a0b0e0;text-decoration:underline;">📄 ${cl2.name||'Dokument öffnen'}</a>`}
             <button class="eigene-eintrag-del" style="font-size:14px;" onclick="checklisteLoeschen('${k.id}',2)" title="Checkliste entfernen">✕</button>
           </div>`
         : `<label class="btn btn-ghost btn-xs" style="cursor:pointer;">
