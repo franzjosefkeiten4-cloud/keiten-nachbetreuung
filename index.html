@@ -3636,7 +3636,16 @@ function produktFelderBearbeitenHtml(prefix, produkte) {
     return `<div class="produkt-zeile" style="margin-bottom:10px;">
       <div style="flex:1">
         <label class="form-label">${s.icon} ${s.label}</label>
-        <select class="form-select" id="${selId}">${opts}</select>
+        <div class="erweiterbar-wrap">
+          <select class="form-select" id="${selId}" style="padding-right:40px">${opts}</select>
+          <button type="button" class="erweiterbar-toggle" onclick="toggleAddPanel('panel-add-${selId}')" title="Eigenen Eintrag hinzufügen">+</button>
+        </div>
+        <div class="add-eintrag-panel" id="panel-add-${selId}">
+          <div class="add-eintrag-row">
+            <input class="add-eintrag-input" id="inp-add-${selId}" placeholder="Neuer Eintrag ..." onkeydown="if(event.key==='Enter')addEintragFromField('${selId}','${feld}')" />
+            <button class="btn-add-confirm" onclick="addEintragFromField('${selId}','${feld}')">Hinzufügen</button>
+          </div>
+        </div>
       </div>
       <div class="quelle-toggle">
         <button class="quelle-btn ${aktQuelle==='keiten'?'active-keiten':''}" onclick="setQuelleB('${prefix}','${feld}','keiten',this)">Keiten</button>
