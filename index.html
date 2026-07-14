@@ -1270,7 +1270,8 @@ const STAMM = {
   bett: {
     label: 'Bett / Gestell', icon: '🪵',
     gruppen: [
-      { label: 'Fremdprodukt', items: ['Fremdprodukt Bettgestell'] },
+      { label: 'Keiten Betten', items: ['Zirbenholzbett','Massivholz Eiche','Massivholz Buche','Massivholz Nussbaum','Massivholz Kirschbaum','Keiten Bettgestell (Sonderanfertigung)'] },
+      { label: 'Fremdprodukt', items: ['Fremdprodukt Bettgestell','Bestandsbett (Kunde behält)','Kein Bett / nur Matratze'] },
     ]
   },
 };
@@ -3587,7 +3588,8 @@ function openProfil(id){
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       Bearbeiten
     </button>
-    ${k.proschlafLink?`<a class="btn btn-ghost" href="${k.proschlafLink}" target="_blank" rel="noopener" style="border-color:rgba(80,100,160,0.4);color:#a0b0e0;">🔗 Proschlaf-Kundenseite</a>`:''}
+    ${(k.proschlafLink1||k.proschlafLink)?`<a class="btn btn-ghost" href="${k.proschlafLink1||k.proschlafLink}" target="_blank" rel="noopener" style="border-color:rgba(80,100,160,0.4);color:#a0b0e0;">🔗 Proschlaf ${vollName(k,1).split(' ')[0]}</a>`:''}
+    ${k.proschlafLink2?`<a class="btn btn-ghost" href="${k.proschlafLink2}" target="_blank" rel="noopener" style="border-color:rgba(80,100,160,0.4);color:#a0b0e0;">🔗 Proschlaf ${vollName(k,2).split(' ')[0]}</a>`:''}
     ${k.status!=='abgeschlossen'&&!istGewerbe&&k.kundeStufe==='gekauft'?`
       ${nachbetreuungAktiv(k)?`<button class="btn btn-ghost btn-sm" style="border-color:rgba(184,134,11,0.4);color:#e0ad1a;" onclick="openGespraech('${k.id}','nachfass')">🔄 Nachfass erfassen</button>`:''}
       <button class="btn btn-ghost btn-sm" style="border-color:rgba(160,176,224,0.35);color:#a0b0e0;" onclick="openGespraech('${k.id}','rueckmeldung')">📞 Kundenrückmeldung</button>
@@ -3685,7 +3687,7 @@ function openBearbeiten(id) {
           <label class="form-label">Anrede Person 1</label>
           <select class="form-select" id="b-anrede1">
             <option value="">– ohne –</option>
-            ${['Herr','Frau'].map(a=>`<option ${(k.anrede1||''===a)?'selected':''}>${a}</option>`).join('')}
+            ${['Herr','Frau'].map(a=>`<option ${(k.anrede1||'')===a?'selected':''}>${a}</option>`).join('')}
           </select>
         </div>
         <div class="form-row">
@@ -3700,7 +3702,7 @@ function openBearbeiten(id) {
           <label class="form-label">Anrede Person 2</label>
           <select class="form-select" id="b-anrede2">
             <option value="">– ohne –</option>
-            ${['Herr','Frau'].map(a=>`<option ${(k.anrede2||''===a)?'selected':''}>${a}</option>`).join('')}
+            ${['Herr','Frau'].map(a=>`<option ${(k.anrede2||'')===a?'selected':''}>${a}</option>`).join('')}
           </select>
         </div>
         <div class="form-row">
@@ -3756,10 +3758,13 @@ function openBearbeiten(id) {
           <input class="form-input" type="date" id="b-naechsterKontakt" value="${k.naechsterKontakt||''}" />
         </div>
         <div class="form-row">
-          <label class="form-label">🔗 Proschlaf / Vitario Kundenseite</label>
-          <input class="form-input" id="b-proschlaf-link" value="${k.proschlafLink||''}" placeholder="Link zur Kundenseite bei service.proschlaf.at einfügen" />
-          <div class="hint">Wird im Profil als Direktlink zur Liegesimulator-/Oberschicht-Konfiguration angezeigt.</div>
+          <label class="form-label">🔗 Proschlaf-Seite ${vollName(k,1).split(' ')[0]||'Person 1'}</label>
+          <input class="form-input" id="b-proschlaf-link1" value="${k.proschlafLink1||k.proschlafLink||''}" placeholder="Link zur individuellen Kundenseite bei service.proschlaf.at" />
         </div>
+        ${vollName(k,2)?`<div class="form-row">
+          <label class="form-label">🔗 Proschlaf-Seite ${vollName(k,2).split(' ')[0]}</label>
+          <input class="form-input" id="b-proschlaf-link2" value="${k.proschlafLink2||''}" placeholder="Link zur individuellen Kundenseite bei service.proschlaf.at" />
+        </div>`:''}
       </div>
 
       <div class="divider"></div>
@@ -3827,7 +3832,9 @@ async function bearbeitenSpeichern() {
     berater: document.getElementById('b-berater').value,
     ampel: document.getElementById('b-ampel').value,
     naechsterKontakt: document.getElementById('b-naechsterKontakt').value || kunde.naechsterKontakt,
-    proschlafLink: document.getElementById('b-proschlaf-link')?.value.trim() || '',
+    proschlafLink1: document.getElementById('b-proschlaf-link1')?.value.trim() || '',
+    proschlafLink2: document.getElementById('b-proschlaf-link2')?.value.trim() || '',
+    proschlafLink: '',
     person1: leseLiege('p1', kunde.person1),
     person2: name2 ? leseLiege('p2', kunde.person2) : null,
   }));
